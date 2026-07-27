@@ -1,10 +1,2 @@
-import { solutions } from "../../mock/processPlan";
-export function SolutionComparisonTable() {
-  return <div className="card table-card"><table>
-    <thead><tr><th>方案</th><th>成本</th><th>時間</th><th>品質</th><th>風險</th><th>CP 值</th><th>AI 推薦程度</th><th>說明</th></tr></thead>
-    <tbody>{solutions.map((s,i)=><tr key={s.name} className={i===0?"solution-best":""}>
-      <td><b>{s.name}</b>{i===0&&<span className="sub recommend">AI 首選</span>}</td><td>{s.cost}</td><td>{s.time}</td><td>{s.quality}</td>
-      <td><span className={`tag ${s.risk==="低"?"tag-green":"tag-amber"}`}>{s.risk}</span></td><td><b>{s.cp}</b></td><td className="recommend">{s.recommend}</td><td>{s.desc}</td>
-    </tr>)}</tbody>
-  </table></div>;
-}
+import {solutions} from "../../mock/processPlan";
+export function SolutionComparisonTable(){const colors=["green","blue","orange","purple"];return <div className="solution-cards">{solutions.map((s,i)=><article className={`solution-card ${colors[i]}`} key={s.name}><div className="solution-top"><b>方案{i+1}<span>{i===0?"使用現有設備生產":i===1?"調整加工順序":i===2?"新增設備加工":"委外部分製程"}</span></b><div><small>AI 推薦指數</small><strong>{"★".repeat(5-i)}<i>{"☆".repeat(i)}</i></strong></div></div>{[["成本影響",i===0?"▼ 低":i===1?"▼ 中":"▲ 高"],["時間影響",i===0?"▼ 低":i===1?"▼ 中":"▼ 高"],["品質影響","● 穩定"],["風險分析",s.risk+"風險"]].map(([a,b])=><div className="compare-row" key={a}><span>{a}</span><b>{b}</b></div>)}<div className="solution-desc"><b>方案說明</b><p>{s.desc}，適合目前專案需求與產線條件。</p></div></article>)}</div>}

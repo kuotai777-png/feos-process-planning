@@ -1,19 +1,2 @@
-import { equipment } from "../../mock/equipment";
-export function EquipmentAnalysisCard() {
-  return <div className="split-grid">
-    <div className="card fit-summary">
-      <div className="muted">整體設備適配率</div><div className="big-number">91%</div>
-      <div className="bar"><i style={{width:"91%"}}/></div>
-      <div className="yes-box">✓ 可直接生產</div>
-      <p className="muted">現有設備可完成全部製程，僅需微調鑽孔中心排程。</p>
-    </div>
-    <div className="card table-card"><table>
-      <thead><tr><th>設備</th><th>設備狀態</th><th>適配率</th><th>瓶頸分析</th><th>建議</th></tr></thead>
-      <tbody>{equipment.map(row=><tr key={row.code}>
-        <td className="equipment-name">{row.name}<span className="sub">{row.code}</span></td>
-        <td><span className={`tag ${row.status==="高負載"||row.status==="保養預排"?"tag-amber":"tag-green"}`}>{row.status}</span></td>
-        <td><b>{row.fit}%</b></td><td>{row.bottleneck}</td><td>{row.advice}</td>
-      </tr>)}</tbody>
-    </table></div>
-  </div>;
-}
+import {equipment} from "../../mock/equipment";
+export function EquipmentAnalysisCard(){return <div className="equipment-block"><div className="table-card"><table><thead><tr><th>設備名稱</th><th>數量</th><th>設備狀態</th><th>負載率</th><th>是否可因應</th></tr></thead><tbody>{equipment.map((r,i)=><tr key={r.code}><td>{r.name}</td><td>{i===0?2:1}</td><td>運作中</td><td>{[78,65,62,55][i]}%</td><td className="ok">✓ 可因應</td></tr>)}</tbody></table></div><div className="equipment-summary"><div><span>設備整體適配率</span><b>94%</b></div><div><span>綜合評估結果</span><b>●　可以直接生產</b></div></div></div>}

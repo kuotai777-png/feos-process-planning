@@ -1,20 +1,2 @@
 "use client";
-export function HumanDecisionPanel({selected,onSelect}:{selected:string,onSelect:(v:string)=>void}) {
-  const edits=["修改加工流程","修改設備配置","修改加工順序","修改工時","修改成本","新增加工規則","建立公司案例"];
-  const writes=["加工案例","設備能力","成本資料","品質案例","工程經驗"];
-  return <div className="card">
-    <div className="decision-grid">
-      <div className="decision-col"><h3 className="col-title">決策方案</h3><div className="choice-list">
-        {["採用方案 A","採用方案 B","採用方案 C","自訂方案"].map(v=><label className="choice" key={v}><input type="radio" name="plan" checked={selected===v} onChange={()=>onSelect(v)}/>{v}</label>)}
-      </div></div>
-      <div className="decision-col"><h3 className="col-title">人工修改項目</h3><div className="choice-list">
-        {edits.map((v,i)=><label className="choice" key={v}><input type="checkbox" defaultChecked={i===0||i===2}/>{v}</label>)}
-      </div></div>
-      <div className="decision-col"><h3 className="col-title">寫入企業知識庫</h3><div className="choice-list">
-        <label className="choice"><input type="checkbox" defaultChecked/><b>同步本次決策知識</b></label>
-        {writes.map((v,i)=><label className="choice" key={v}><input type="checkbox" defaultChecked={i<2}/>{v}</label>)}
-      </div></div>
-    </div>
-    <div className="textarea-wrap"><h3 className="col-title">決策備註</h3><textarea aria-label="決策備註" placeholder="請輸入方案調整原因、風險說明或交接事項…"/></div>
-  </div>;
-}
+export function HumanDecisionPanel({selected,onSelect}:{selected:string,onSelect:(v:string)=>void}){return <div className="card decision-card"><div className="decision-hint">依據以上分析結果、CP 值、設備狀況及訂單排程，選擇最適合的加工方案。</div><div className="decision-compact"><div className="choice-list">{["採用方案 A（現有設備優化）","採用方案 B（加工順序調整）","採用方案 C（新增設備導入）","自訂方案（自行調整流程）"].map(v=><label className="choice" key={v}><input type="radio" name="plan" checked={selected===v||selected==="採用方案 A"&&v.startsWith("採用方案 A")} onChange={()=>onSelect(v)}/>{v}</label>)}</div><div><h3 className="col-title">決策備註（選填）</h3><textarea aria-label="決策備註" maxLength={300} placeholder="請輸入決策備註或調整說明…"/><small className="counter">0 / 300</small></div><aside className="next-actions"><h3>後續動作</h3>{["1　產生製程文件","2　生產排程","3　製造執行","4　品質追蹤"].map(x=><div key={x}>{x}</div>)}</aside></div></div>}
