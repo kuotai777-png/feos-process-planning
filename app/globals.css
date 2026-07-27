@@ -178,3 +178,50 @@ body{background:#eef2f7;color:#172033;font-size:13px}
   .sidebar.is-open{display:block;width:210px;box-shadow:12px 0 30px rgba(2,18,35,.3)}.sidebar.is-open~.main-wrap{margin-left:0}
 }
 .topbar{display:flex}.topbar>*{width:auto;margin-inline:0;height:auto;display:flex}.topbar .top-title{float:none;margin-left:max(0px,calc((100% - var(--feos-content-max))/2))}.topbar .top-actions{float:none;margin-left:auto;margin-right:max(0px,calc((100% - var(--feos-content-max))/2))}
+
+/* Balanced reading rhythm: keep comparison surfaces consistent and prevent
+   dense desktop columns from leaking into tablet-sized viewports. */
+.page{padding-inline:18px}
+.section{padding:14px 16px}
+.section-head{min-height:28px;margin-bottom:12px}
+.plan-grid{grid-template-columns:repeat(3,minmax(300px,1fr));gap:16px;align-items:stretch}
+.plan-card{display:flex;min-width:0;height:100%;flex-direction:column}
+.plan-card .references{flex:1}
+.plan-card .confidence{margin-top:auto}
+.analysis-pair{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.analysis-pair>.section{display:flex;min-width:0;flex-direction:column}
+.analysis-pair>.section>*:last-child{flex:1}
+.solution-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
+.solution-card{display:flex;min-height:220px;flex-direction:column;padding:12px}
+.solution-desc{margin-top:auto}
+.decision-compact{grid-template-columns:1fr 1fr 1fr;gap:20px}
+
+@media(max-width:1180px){
+  .sidebar{display:none!important}
+  .main-wrap{margin-left:0}
+  .footer-action{left:0}
+  .mobile-menu{display:block}
+  .page{padding-inline:16px}
+  .stepper{margin-inline:-16px}
+  .analysis-pair{grid-template-columns:1fr}
+  .solution-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:900px){
+  .plan-grid{grid-template-columns:1fr}
+  .plan-card{min-height:auto}
+  .plan-heading{padding-right:72px}
+  .decision-compact{grid-template-columns:1fr 1fr}
+  .next-actions{grid-column:1/-1;border-top:1px solid #e1e6ed;border-left:0;padding:14px 0 0}
+}
+
+@media(max-width:640px){
+  .page{padding-inline:10px}
+  .section{padding:12px}
+  .stepper{margin-inline:-10px}
+  .solution-cards,.decision-compact{grid-template-columns:1fr}
+  .next-actions{grid-column:auto}
+  .info-grid{grid-template-columns:1fr}
+  .info-item{border-bottom:1px solid #edf1f5}
+  .info-item:last-child{border-bottom:0}
+}
