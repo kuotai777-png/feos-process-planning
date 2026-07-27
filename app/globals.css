@@ -280,3 +280,53 @@ body{font-size:15px;line-height:1.55}
   .plan-description,.references,.solution-desc{font-size:14px}
   .equipment-block th,.equipment-block td{font-size:13px}
 }
+
+/* Wide-screen use: fill the space beside the navigation instead of centering
+   a fixed-width 1440px canvas. */
+:root{--feos-content-max:100%}
+.page{width:100%;max-width:none;padding-inline:22px}
+.topbar .top-title{margin-left:0}
+.topbar .top-actions{margin-right:0}
+
+/* Larger presentation scale for classroom and large-monitor viewing. */
+body{font-size:17px;line-height:1.65}
+.top-title{font-size:21px}
+.side-item{font-size:16px}
+.step{font-size:15px}
+.head-tools button{font-size:14px}
+.info-value{font-size:16px}
+.section-title{font-size:21px}
+.section-note{font-size:15px}
+.plan-letter{font-size:19px}
+.plan-letter span{font-size:16px}
+.tag-green{font-size:14px}
+.rating-line{min-height:34px;font-size:16px}
+.rating-line>span{width:108px}
+.stars{font-size:20px}
+.plan-description,.evidence-title{font-size:15px}
+.evidence-legend div{height:23px;font-size:14px}
+.references{font-size:14px}
+.confidence,.formula-note{font-size:14px}
+.equipment-block th,.equipment-block td{padding:11px 12px;font-size:14px}
+.equipment-summary span,.analysis-pair .summary-item span{font-size:14px}
+.analysis-pair .gantt-name,.gantt-label,.order-forecast span{font-size:13px}
+.order-forecast b{font-size:15px}
+.solution-top>b{font-size:17px}
+.solution-top>b span{font-size:15px}
+.solution-top small{font-size:13px}
+.solution-top strong{font-size:18px}
+.compare-row,.solution-desc,.decision-hint,.next-actions div{font-size:15px}
+.choice{font-size:16px}
+.decision-compact textarea{font-size:15px}
+.btn{font-size:16px}
+
+@media(max-width:1180px){
+  .page{padding-inline:16px}
+}
+
+@media(max-width:640px){
+  body{font-size:17px}
+  .page{padding-inline:10px}
+  .top-title{font-size:17px}
+  .section-title{font-size:19px}
+}
