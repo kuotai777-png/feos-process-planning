@@ -225,3 +225,58 @@ body{background:#eef2f7;color:#172033;font-size:13px}
   .info-item{border-bottom:1px solid #edf1f5}
   .info-item:last-child{border-bottom:0}
 }
+
+/* Readable type scale */
+body{font-size:15px;line-height:1.55}
+.top-title{font-size:19px}
+.side-item{font-size:14px}
+.brand-text small{font-size:10px;line-height:1.35}
+.step{font-size:13px}
+.step-num{font-size:11px}
+.head-tools button{font-size:12px}
+.info-value{font-size:14px;line-height:1.45}
+.section-title{font-size:18px}
+.section-note{font-size:13px}
+.plan-letter{font-size:17px}
+.plan-letter span{font-size:14px}
+.tag-green{font-size:12px}
+.cp span{font-size:11px}
+.rating-list{padding-block:8px}
+.rating-line{min-height:30px;font-size:14px}
+.rating-line>span{width:92px}
+.stars{font-size:18px}
+.plan-description{font-size:13px}
+.plan-description p{line-height:1.65}
+.evidence-title{font-size:13px}
+.evidence-legend div{height:20px;font-size:12px}
+.references{font-size:12px}
+.references ul{line-height:1.75}
+.confidence{font-size:13px}
+.formula-note{font-size:12px;line-height:1.55}
+.equipment-block th,.equipment-block td{padding:9px 10px;font-size:12px}
+.equipment-summary span{font-size:12px}
+.analysis-pair .summary-item span{font-size:12px}
+.analysis-pair .gantt-name{font-size:11px}
+.gantt-label{font-size:12px}
+.order-forecast span{font-size:11px}
+.order-forecast b{font-size:13px}
+.solution-top>b{font-size:15px}
+.solution-top>b span{font-size:13px}
+.solution-top small{font-size:11px}
+.solution-top strong{font-size:16px}
+.compare-row{padding-block:9px;font-size:13px}
+.solution-desc{font-size:13px}
+.solution-desc p{line-height:1.6}
+.decision-hint{padding:8px 14px;font-size:13px}
+.choice{font-size:14px}
+.decision-compact textarea{font-size:13px;line-height:1.55}
+.next-actions div{font-size:13px}
+.btn{font-size:14px}
+
+@media(max-width:640px){
+  body{font-size:16px}
+  .top-title{font-size:16px}
+  .section-title{font-size:17px}
+  .plan-description,.references,.solution-desc{font-size:14px}
+  .equipment-block th,.equipment-block td{font-size:13px}
+}
