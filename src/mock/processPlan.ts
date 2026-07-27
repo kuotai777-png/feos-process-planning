@@ -1,7 +1,7 @@
 export const processPlans = [
-  { id:"A", name:"高效智慧加工", cp:92, recommended:true, cost:"NT$ 286,000", quality:94, efficiency:91, fit:96, confidence:93, evidence:88, sources:"12 筆企業案例・6 份官方文件" },
-  { id:"B", name:"成本優先加工", cp:84, recommended:false, cost:"NT$ 238,000", quality:86, efficiency:82, fit:89, confidence:88, evidence:79, sources:"9 筆企業案例・4 份官方文件" },
-  { id:"C", name:"品質精密加工", cp:88, recommended:false, cost:"NT$ 332,000", quality:98, efficiency:78, fit:84, confidence:91, evidence:85, sources:"15 筆企業案例・8 份官方文件" },
+  { id:"A", name:"現有設備優化", cp:92, recommended:true, cost:"NT$ 286,000", quality:100, efficiency:80, fit:95, confidence:96, evidence:88, sources:"12 筆企業案例・6 份官方文件" },
+  { id:"B", name:"加工順序調整", cp:88, recommended:false, cost:"NT$ 238,000", quality:80, efficiency:80, fit:90, confidence:93, evidence:79, sources:"9 筆企業案例・4 份官方文件" },
+  { id:"C", name:"新增設備導入", cp:81, recommended:false, cost:"NT$ 332,000", quality:100, efficiency:80, fit:82, confidence:90, evidence:85, sources:"15 筆企業案例・8 份官方文件" },
 ];
 
 export const solutions = [
