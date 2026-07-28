@@ -1,0 +1,20 @@
+CREATE TABLE `resource_catalog` (
+	`id` text PRIMARY KEY NOT NULL,
+	`kind` text NOT NULL,
+	`name` text NOT NULL,
+	`category` text NOT NULL,
+	`code` text NOT NULL,
+	`specification` text NOT NULL,
+	`unit` text NOT NULL,
+	`unit_price` integer DEFAULT 0 NOT NULL,
+	`supplier` text NOT NULL,
+	`lead_days` integer DEFAULT 0 NOT NULL,
+	`stock_quantity` integer DEFAULT 0 NOT NULL,
+	`safety_stock` integer DEFAULT 0 NOT NULL,
+	`properties` text DEFAULT '{}' NOT NULL,
+	`source` text NOT NULL,
+	`effective_date` text NOT NULL,
+	`enabled` integer DEFAULT true NOT NULL,
+	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL
+);

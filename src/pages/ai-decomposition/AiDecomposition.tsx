@@ -5,6 +5,7 @@ import {AppLayout} from "../../components/layout/AppLayout";
 import {useActiveProject} from "../../hooks/useActiveProject";
 import {projectKey} from "../../lib/projectStore";
 import {calculateProcessCost,defaultProcessCosts,findProcessCost,ProcessCost} from "../../lib/processCostStore";
+import {defaultResourceCatalog,ResourceCatalogItem} from "../../lib/resourceCatalog";
 
 const initialParts=["面板 × 6","縱樑 × 3","支撐塊 × 9","底板 × 3"];
 const initialProcesses=["裁切","CNC 定位","鑽孔","倒角","砂磨","組裝","表面處理"];
@@ -34,6 +35,7 @@ export default function AiDecomposition(){
   const [confirmed,setConfirmed]=useState(false);
   const [engineeringConditions,setEngineeringConditions]=useState<Record<string,string>>({});
   const [costRates,setCostRates]=useState<ProcessCost[]>(defaultProcessCosts);
+  const [resourceCatalog,setResourceCatalog]=useState<ResourceCatalogItem[]>(defaultResourceCatalog);
   const [lastDeleted,setLastDeleted]=useState<{section:"parts"|"structures"|"processes"|"flow";value:string|{name:string;value:string};index:number}|null>(null);
   const [dragFeedback,setDragFeedback]=useState("尚未調整流程；拖曳後系統會依新位置提供評估提示。");
   const [toast,setToast]=useState("");
@@ -48,6 +50,7 @@ export default function AiDecomposition(){
     else{setParts(initialParts);setProcesses(initialProcesses);setFlow(initialFlow);setStructures(initialStructures);setReady(false);setValidation("idle");setConfirmed(false)}
   },[project.id]);
   useEffect(()=>{fetch("/api/process-costs").then(response=>response.ok?response.json():Promise.reject()).then(setCostRates).catch(()=>setCostRates(defaultProcessCosts))},[]);
+  useEffect(()=>{fetch("/api/resource-catalog").then(response=>response.ok?response.json():Promise.reject()).then(setResourceCatalog).catch(()=>setResourceCatalog(defaultResourceCatalog))},[]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
   const upload=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const dataUrl=String(reader.result??"");setImage(dataUrl);setName(f.name);localStorage.setItem(projectKey(project.id,"product-image"),dataUrl);localStorage.setItem(projectKey(project.id,"product-image-name"),f.name);setReady(false);notify("產品圖片已載入")};reader.readAsDataURL(f)};
   const saveAnalysis=(isReady=ready,nextValidation=validation,nextConfirmed=confirmed)=>localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,ready:isReady,validation:nextValidation,confirmed:nextConfirmed}));
@@ -120,7 +123,11 @@ export default function AiDecomposition(){
   const activeIssueCount=partIssues.filter(Boolean).length+structureIssues.filter(Boolean).length+processIssues.filter(Boolean).length+flowIssues.filter(Boolean).length+missingProcesses.length+(hasSupportWarning?1:0);
   const processFit=Math.max(68,96-Math.abs(processes.length-7)*4-(correctOrder?0:12));
   const timeScore=Math.max(62,91-Math.abs(flow.length-8)*3-(correctOrder?0:9));
-  const materialCost=totalPartCount*38;
+  const selectedMaterial=resourceCatalog.find(item=>item.kind==="material"&&item.enabled&&(engineeringConditions.material||"").includes(item.name));
+  const standardMaterial=selectedMaterial??resourceCatalog.find(item=>item.kind==="material"&&item.enabled);
+  const baseMaterialCost=Math.round((standardMaterial?.unitPrice??680)*Math.max(1,totalPartCount/6));
+  const hardwareCost=Math.round(resourceCatalog.filter(item=>item.kind==="hardware"&&item.enabled).slice(0,2).reduce((sum,item)=>sum+item.unitPrice,0)*Math.max(1,totalPartCount/12));
+  const materialCost=baseMaterialCost+hardwareCost;
   const ratedFlow=flow.map(step=>({step,rate:findProcessCost(step,costRates)}));
   const missingCostRates=ratedFlow.filter(item=>!item.rate).map(item=>item.step);
   const processingCost=ratedFlow.reduce((sum,item)=>sum+(item.rate?calculateProcessCost(item.rate,totalPartCount):0),0);

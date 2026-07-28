@@ -3,6 +3,7 @@ import {ChangeEvent,FormEvent,useEffect,useMemo,useRef,useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
 import {useActiveProject} from "../../hooks/useActiveProject";
 import {projectKey} from "../../lib/projectStore";
+import {defaultResourceCatalog,ResourceCatalogItem} from "../../lib/resourceCatalog";
 
 const groups=[
   {title:"尺寸要求",icon:"↔",fields:[
@@ -56,6 +57,7 @@ export default function EngineeringConditions(){
   const [chatInput,setChatInput]=useState("");
   const [chatting,setChatting]=useState(false);
   const [messages,setMessages]=useState<ChatMessage[]>([welcomeMessage]);
+  const [catalog,setCatalog]=useState<ResourceCatalogItem[]>(defaultResourceCatalog);
   const fileInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{
     const storedImage=localStorage.getItem(projectKey(project.id,"product-image"));
@@ -68,6 +70,7 @@ export default function EngineeringConditions(){
     if(storedImage)setImageUrl(storedImage);
     if(storedName)setFileName(storedName);
   },[project.id]);
+  useEffect(()=>{fetch("/api/resource-catalog").then(response=>response.ok?response.json():Promise.reject()).then(setCatalog).catch(()=>setCatalog(defaultResourceCatalog))},[]);
   const completion=useMemo(()=>{
     const filled=Object.values(values).filter(Boolean).length;
     return Math.round(filled/Object.keys(initialValues).length*100);
@@ -156,12 +159,13 @@ export default function EngineeringConditions(){
         </section>
 
         <section className="engineering-panel">
-          <div className="engineering-heading"><div><span className="panel-kicker">ENGINEERING CONDITIONS</span><h2>工程條件</h2></div><div className="input-mode"><span className={aiReady?"active":""}>AI 建議</span><span className="active">人工可編輯</span></div><button className="clear-btn" onClick={reset}>重設條件</button></div>
+          <div className="engineering-heading"><div><span className="panel-kicker">ENGINEERING CONDITIONS</span><h2>工程條件</h2><small className="catalog-linked">● 已串接知識庫：{catalog.filter(item=>item.kind==="material"&&item.enabled).length} 筆可用材質</small></div><div className="input-mode"><span className={aiReady?"active":""}>AI 建議</span><span className="active">人工可編輯</span></div><button className="clear-btn" onClick={reset}>重設條件</button></div>
           {aiReady&&<div className="ai-notice">✦ AI 已填入預判值　<span>藍色標記代表 AI 建議，請人工覆核後儲存。</span></div>}
           <div className="condition-groups">{groups.map(group=><fieldset className="condition-group" key={group.title}>
             <legend><span>{group.icon}</span>{group.title}</legend>
-            <div className="condition-fields">{group.fields.map(field=><label className={`condition-field ${aiReady?"ai-suggested":""}`} key={field.key}><span>{field.label}{aiReady&&<small>AI</small>}</span><div className="field-control">{field.unit&&<em>{field.unit}</em>}<input value={values[field.key]??""} onChange={e=>setValues(v=>({...v,[field.key]:e.target.value}))} aria-label={field.label}/></div></label>)}</div>
+            <div className="condition-fields">{group.fields.map(field=><label className={`condition-field ${aiReady?"ai-suggested":""}`} key={field.key}><span>{field.label}{aiReady&&<small>AI</small>}</span><div className="field-control">{field.unit&&<em>{field.unit}</em>}<input list={field.key==="material"||field.key==="alternatives"?"feos-material-options":undefined} value={values[field.key]??""} onChange={e=>setValues(v=>({...v,[field.key]:e.target.value}))} aria-label={field.label}/></div></label>)}</div>
           </fieldset>)}</div>
+          <datalist id="feos-material-options">{catalog.filter(item=>item.kind==="material"&&item.enabled).map(item=><option key={item.id} value={item.name}>{item.specification} · NT$ {item.unitPrice}/{item.unit}</option>)}</datalist>
         </section>
       </div>
     </main>

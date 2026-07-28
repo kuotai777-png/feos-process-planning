@@ -50,3 +50,24 @@ export const processCosts=sqliteTable("process_costs",{
   createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const resourceCatalog=sqliteTable("resource_catalog",{
+  id:text("id").primaryKey(),
+  kind:text("kind").notNull(),
+  name:text("name").notNull(),
+  category:text("category").notNull(),
+  code:text("code").notNull(),
+  specification:text("specification").notNull(),
+  unit:text("unit").notNull(),
+  unitPrice:integer("unit_price").notNull().default(0),
+  supplier:text("supplier").notNull(),
+  leadDays:integer("lead_days").notNull().default(0),
+  stockQuantity:integer("stock_quantity").notNull().default(0),
+  safetyStock:integer("safety_stock").notNull().default(0),
+  properties:text("properties").notNull().default("{}"),
+  source:text("source").notNull(),
+  effectiveDate:text("effective_date").notNull(),
+  enabled:integer("enabled",{mode:"boolean"}).notNull().default(true),
+  createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
