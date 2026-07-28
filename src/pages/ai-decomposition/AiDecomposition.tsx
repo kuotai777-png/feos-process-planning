@@ -33,6 +33,7 @@ export default function AiDecomposition(){
   const [confirmed,setConfirmed]=useState(false);
   const [engineeringConditions,setEngineeringConditions]=useState<Record<string,string>>({});
   const [lastDeleted,setLastDeleted]=useState<{section:"parts"|"structures"|"processes"|"flow";value:string|{name:string;value:string};index:number}|null>(null);
+  const [dragFeedback,setDragFeedback]=useState("尚未調整流程；拖曳後系統會依新位置提供評估提示。");
   const [toast,setToast]=useState("");
   const input=useRef<HTMLInputElement>(null);
   useEffect(()=>{
@@ -56,13 +57,18 @@ export default function AiDecomposition(){
     if(dragIndex===null||dragIndex===target)return;
     const next=[...flow];const [item]=next.splice(dragIndex,1);next.splice(target,0,item);
     const indexOf=(key:string)=>next.findIndex(value=>value.includes(key));
-    const invalidReason=indexOf("備料")!==0?"備料必須維持第一站"
-      :indexOf("包裝")!==next.length-1?"包裝必須維持最後一站"
-      :indexOf("裁切")>indexOf("CNC")?"裁切必須早於 CNC"
-      :indexOf("CNC")>indexOf("鑽孔")?"CNC 定位必須早於鑽孔"
-      :indexOf("組裝")>indexOf("砂磨")?"組裝必須早於砂磨":"";
-    if(invalidReason){setDragIndex(null);notify(`已阻擋拖曳：${invalidReason}`);return}
+    const after=(first:string,second:string)=>indexOf(first)>=0&&indexOf(second)>=0&&indexOf(first)>indexOf(second);
+    const tips:string[]=[];
+    if(indexOf("備料")>0)tips.push("備料移離首站，可能增加前置搬運與等待");
+    if(indexOf("包裝")>=0&&indexOf("包裝")<next.length-1)tips.push("包裝不是末站，後續加工可能造成拆包與重包成本");
+    if(after("裁切","CNC"))tips.push("CNC 早於裁切，定位基準可能不穩定");
+    if(after("CNC","鑽孔"))tips.push("鑽孔早於 CNC，孔位可能因後續加工產生偏差");
+    if(after("組裝","砂磨"))tips.push("砂磨早於組裝，接合後可能需要再次修磨");
+    if(tips.length===0)tips.push(`「${item}」移至第 ${target+1} 站：順序符合通常製造邏輯`);
+    else tips.push(`本次調整預估增加 NT$ ${tips.length*160} 的搬運、返工或等待成本`);
     setFlow(next);setDragIndex(null);
+    setDragFeedback(tips.join("；"));
+    notify(tips[0]);
     changed();
   };
   const correctOrder=flow.indexOf("裁切")<flow.indexOf("CNC")&&flow.indexOf("CNC")<flow.indexOf("鑽孔")&&flow.indexOf("組裝")<flow.indexOf("砂磨");
@@ -159,7 +165,7 @@ export default function AiDecomposition(){
             <ValidationSummary count={flowIssues.filter(Boolean).length+(!correctOrder?1:0)} okText="流程順序與前後製程關係正確"/>
             <div className="flow-dnd">{flow.map((v,i)=><div draggable onDragStart={()=>setDragIndex(i)} onDragOver={e=>e.preventDefault()} onDrop={()=>moveFlow(i)} className={`${dragIndex===i?"dragging":""} ${flowIssues[i]?"has-issue":""}`} key={`${v}-${i}`}><i>⋮⋮</i><span>{String(i+1).padStart(2,"0")}</span>{editing?<input value={v} onChange={e=>update(flow,setFlow,i,e.target.value)}/>:<b>{v}</b>}<button onClick={()=>remove("flow",flow,setFlow,i)}>×</button>{flowIssues[i]&&<small className="inline-issue">⚠ {flowIssues[i]}</small>}</div>)}<SuggestionPicker label="新增工序" suggestions={processSuggestions} onSelect={value=>add(flow,setFlow,value)}/></div>
             <div className="live-evaluation"><header><div><b>AI 即時成效評估</b><small>流程調整後自動重新計算</small></div><em className={correctOrder?"good":"warning"}>● {correctOrder?"流程合理":"發現順序風險"}</em></header><div><article><span>設備適配率</span><b>{processFit}%</b><i style={{width:`${processFit}%`}}/></article><article><span>時間效率</span><b>{timeScore}%</b><i style={{width:`${timeScore}%`}}/></article><article><span>預估良率</span><b>{correctOrder?"97.6%":"89.5%"}</b><i style={{width:correctOrder?"97.6%":"89.5%"}}/></article></div>{!correctOrder&&<p>⚠ 建議維持「裁切 → CNC → 鑽孔」，並在組裝完成後進行砂磨，以降低定位誤差與返工風險。</p>}</div>
-            <div className="flow-live-decision" aria-live="polite"><header><b>即時流程判斷與拖曳防護</b><span>通常性 · 合理性 · 安全 · 成本</span></header><div><span className={flow.some(x=>x.includes("備料"))?"pass":"fail"}>備料起點</span><span className={flow.indexOf("裁切")<flow.indexOf("CNC")?"pass":"fail"}>裁切先於 CNC</span><span className={flow.indexOf("CNC")<flow.indexOf("鑽孔")?"pass":"fail"}>CNC 先於鑽孔</span><span className={flow.indexOf("組裝")<flow.indexOf("砂磨")?"pass":"fail"}>組裝先於砂磨</span></div><section><b>預估流程成本 NT$ {estimatedCost.toLocaleString()}</b><span>{flow.length>9?"工序偏多，換站與搬運成本上升":"工序數量位於合理範圍"}</span><button onClick={()=>restoreDefaults("flow")}>↻ 還原建議流程</button></section><p>{correctOrder&&flowIssues.every(issue=>!issue)?"✓ 目前流程可執行；不合理拖曳將由系統直接阻擋。":`⚠ 即時偵測 ${flowIssues.filter(Boolean).length+(!correctOrder?1:0)} 項流程風險，請依紅色項目調整。`}</p></div>
+            <div className="flow-live-decision" aria-live="polite"><header><b>即時流程判斷與拖曳提示</b><span>自由拖曳 · 通常性 · 合理性 · 安全 · 成本</span></header><div><span className={flow.some(x=>x.includes("備料"))&&flow.findIndex(x=>x.includes("備料"))===0?"pass":"fail"}>備料起點</span><span className={flow.indexOf("裁切")<flow.indexOf("CNC")?"pass":"fail"}>裁切先於 CNC</span><span className={flow.indexOf("CNC")<flow.indexOf("鑽孔")?"pass":"fail"}>CNC 先於鑽孔</span><span className={flow.indexOf("組裝")<flow.indexOf("砂磨")?"pass":"fail"}>組裝先於砂磨</span></div><section><b>預估流程成本 NT$ {estimatedCost.toLocaleString()}</b><span>{flow.length>9?"工序偏多，換站與搬運成本上升":"工序數量位於合理範圍"}</span><button onClick={()=>{restoreDefaults("flow");setDragFeedback("已還原 AI 建議流程。")}}>↻ 還原建議流程</button></section><aside className={correctOrder?"safe":"caution"}><b>本次拖曳提示</b><span>{dragFeedback}</span></aside><p>{correctOrder&&flowIssues.every(issue=>!issue)?"✓ 目前流程可執行；人員仍可自由拖曳調整。":`⚠ 即時偵測 ${flowIssues.filter(Boolean).length+(!correctOrder?1:0)} 項流程風險，系統僅提示、不限制操作。`}</p></div>
           </AnalysisGroup>
           {validation==="checking"&&<div className="revalidation-overlay"><i/><div><b>AI 正在重新驗證所有修正</b><span>檢查資訊完整性、零件與結構合理性、加工相容性、流程順序及製造風險…</span><div><em>資料完整性</em><em>結構合理性</em><em>加工可行性</em><em>流程一致性</em></div></div></div>}
           {validation==="passed"&&<div className="validation-result passed"><span>✓</span><div><b>AI 再驗證通過</b><p>所有資訊完整，結構示警已排除，加工方式與製造流程合理。請按「確認分析」完成本階段。</p></div></div>}
