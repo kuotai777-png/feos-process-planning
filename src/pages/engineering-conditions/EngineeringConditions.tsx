@@ -1,5 +1,5 @@
 "use client";
-import {ChangeEvent,useMemo,useRef,useState} from "react";
+import {ChangeEvent,useEffect,useMemo,useRef,useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
 
 const groups=[
@@ -48,6 +48,12 @@ export default function EngineeringConditions(){
   const [analyzing,setAnalyzing]=useState(false);
   const [aiReady,setAiReady]=useState(false);
   const fileInput=useRef<HTMLInputElement>(null);
+  useEffect(()=>{
+    const storedImage=sessionStorage.getItem("feos-product-image");
+    const storedName=sessionStorage.getItem("feos-product-image-name");
+    if(storedImage)setImageUrl(storedImage);
+    if(storedName)setFileName(storedName);
+  },[]);
   const completion=useMemo(()=>{
     const filled=Object.values(values).filter(Boolean).length;
     return Math.round(filled/Object.keys(initialValues).length*100);
@@ -59,15 +65,22 @@ export default function EngineeringConditions(){
     if(!file)return;
     if(!file.type.startsWith("image/")){notify("請選擇 JPG、PNG 或 WebP 圖片");return}
     if(file.size>10*1024*1024){notify("圖片大小請勿超過 10 MB");return}
-    if(imageUrl)URL.revokeObjectURL(imageUrl);
-    setImageUrl(URL.createObjectURL(file));
-    setFileName(file.name);
-    setAiReady(false);
-    notify("產品圖片已載入");
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const dataUrl=String(reader.result??"");
+      setImageUrl(dataUrl);
+      setFileName(file.name);
+      sessionStorage.setItem("feos-product-image",dataUrl);
+      sessionStorage.setItem("feos-product-image-name",file.name);
+      setAiReady(false);
+      notify("產品圖片已載入，AI 分析頁面將自動帶入");
+    };
+    reader.readAsDataURL(file);
   };
   const removeImage=()=>{
-    if(imageUrl)URL.revokeObjectURL(imageUrl);
     setImageUrl("");setFileName("");setAiReady(false);
+    sessionStorage.removeItem("feos-product-image");
+    sessionStorage.removeItem("feos-product-image-name");
     if(fileInput.current)fileInput.current.value="";
   };
   const analyze=()=>{
@@ -75,6 +88,7 @@ export default function EngineeringConditions(){
     setAnalyzing(true);setAiReady(false);
     window.setTimeout(()=>{
       setValues(aiPredictions);
+      sessionStorage.setItem("feos-engineering-conditions",JSON.stringify(aiPredictions));
       setAnalyzing(false);setAiReady(true);
       notify("AI 預判完成，所有欄位皆可人工修改");
     },1500);

@@ -1,5 +1,6 @@
 "use client";
-import {ChangeEvent,useRef,useState} from "react";
+import {ChangeEvent,useEffect,useRef,useState} from "react";
+import {useRouter} from "next/navigation";
 import {AppLayout} from "../../components/layout/AppLayout";
 
 const initialParts=["面板 × 6","縱樑 × 3","支撐塊 × 9","底板 × 3"];
@@ -7,6 +8,7 @@ const initialProcesses=["裁切","CNC 定位","鑽孔","倒角","砂磨","組裝
 const initialFlow=["備料","裁切","CNC","鑽孔","組裝","砂磨","表面處理","包裝"];
 
 export default function AiDecomposition(){
+  const router=useRouter();
   const [image,setImage]=useState("");
   const [name,setName]=useState("");
   const [parts,setParts]=useState(initialParts);
@@ -17,8 +19,14 @@ export default function AiDecomposition(){
   const [ready,setReady]=useState(false);
   const [toast,setToast]=useState("");
   const input=useRef<HTMLInputElement>(null);
+  useEffect(()=>{
+    const storedImage=sessionStorage.getItem("feos-product-image");
+    const storedName=sessionStorage.getItem("feos-product-image-name");
+    if(storedImage)setImage(storedImage);
+    if(storedName)setName(storedName);
+  },[]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
-  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;if(image)URL.revokeObjectURL(image);setImage(URL.createObjectURL(f));setName(f.name);setReady(false);notify("產品圖片已載入")};
+  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const dataUrl=String(reader.result??"");setImage(dataUrl);setName(f.name);sessionStorage.setItem("feos-product-image",dataUrl);sessionStorage.setItem("feos-product-image-name",f.name);setReady(false);notify("產品圖片已載入")};reader.readAsDataURL(f)};
   const analyze=()=>{if(!image){notify("請先載入產品圖片");input.current?.click();return}setAnalyzing(true);window.setTimeout(()=>{setAnalyzing(false);setReady(true);notify("AI 分解分析完成")},1500)};
   const update=(list:string[],setList:(v:string[])=>void,i:number,v:string)=>setList(list.map((x,n)=>n===i?v:x));
   return <AppLayout activeIndex={3} title="STEP 03 AI 分解分析" project="托盤 NEW-001">
@@ -32,7 +40,7 @@ export default function AiDecomposition(){
             {image?<img src={image} alt="載入的產品圖片"/>:<div className="upload-placeholder"><span>▧</span><b>載入產品圖片</b><small>AI 將辨識零件、結構與加工特徵</small></div>}
             {analyzing&&<div className="ai-scanning"><i/><strong>AI 正在分解產品結構…</strong><span>辨識零件邊界、接合點與加工特徵</span></div>}
           </div>
-          <div className="upload-actions"><button className="btn btn-primary" onClick={()=>input.current?.click()}>＋ {image?"更換圖片":"載入產品圖片"}</button>{image&&<button className="btn btn-secondary" onClick={()=>{URL.revokeObjectURL(image);setImage("");setName("");setReady(false)}}>移除圖片</button>}</div>
+          <div className="upload-actions"><button className="btn btn-primary" onClick={()=>input.current?.click()}>＋ {image?"更換圖片":"載入產品圖片"}</button>{image&&<button className="btn btn-secondary" onClick={()=>{setImage("");setName("");setReady(false);sessionStorage.removeItem("feos-product-image");sessionStorage.removeItem("feos-product-image-name")}}>移除圖片</button>}</div>
           <div className="image-analysis-hint">✦ 圖片需清楚呈現產品全貌。建議使用正面、側面或斜角照片，AI 判讀結果仍須由工程人員覆核。</div>
         </section>
         <section className="decomp-results">
@@ -54,7 +62,7 @@ export default function AiDecomposition(){
         </section>
       </div>
     </main>
-    <footer className="conditions-footer"><span>AI 結果需經人工確認後才能進入下一步</span><div><button className="btn btn-secondary" onClick={()=>setEditing(!editing)}>✎ {editing?"完成修正":"人工修正"}</button><button className="btn btn-outline" onClick={()=>notify("分析結果已確認")}>✓ 確認分析</button><button className="btn btn-primary" onClick={ready?()=>notify("已準備進入下一步"):analyze}>{ready?"下一步 →":analyzing?"AI 分析中…":"✦ 開始 AI 分析"}</button></div></footer>
+    <footer className="conditions-footer"><span>AI 結果需經人工確認後才能進入下一步</span><div><button className="btn btn-secondary" onClick={()=>setEditing(!editing)}>✎ {editing?"完成修正":"人工修正"}</button><button className="btn btn-outline" onClick={()=>{if(!ready){notify("請先完成 AI 分析");return}sessionStorage.setItem("feos-ai-analysis-confirmed","true");notify("分析結果已確認")}}>✓ 確認分析</button><button className="btn btn-primary" onClick={ready?()=>router.push("/manual-review"):analyze}>{ready?"下一步 →":analyzing?"AI 分析中…":"✦ 開始 AI 分析"}</button></div></footer>
     {toast&&<div className="toast" role="status">{toast}</div>}
   </AppLayout>;
 }
