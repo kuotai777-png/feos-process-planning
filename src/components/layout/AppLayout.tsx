@@ -5,7 +5,7 @@ import {useState} from "react";
 const items=[
   ["⌂","首頁總覽","#"],["▣","專案管理","/projects"],["☷","需求管理","/engineering-conditions"],
   ["⚙","AI 分析","/ai-decomposition"],["✎","人工修正","/manual-review"],["▤","AI 複驗","/manual-review"],["▧","分析報告","/analysis-reports"],
-  ["▦","加工流程規劃","/"],["▥","製程文件","#"],["▤","生產排程","#"],["▦","設備管理","#"],
+  ["▦","加工流程規劃","/"],["▥","製程文件","#"],["▤","生產排程","#"],["▦","設備管理","/equipment"],
   ["▥","知識庫","/knowledge-connectors"],["▥","數據統計","#"],["⚙","系統設定","#"],
 ] as const;
 

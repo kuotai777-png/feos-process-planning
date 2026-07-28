@@ -71,3 +71,10 @@ export const resourceCatalog=sqliteTable("resource_catalog",{
   createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const equipmentAssets=sqliteTable("equipment_assets",{
+  id:text("id").primaryKey(),code:text("code").notNull(),name:text("name").notNull(),category:text("category").notNull(),location:text("location").notNull(),status:text("status").notNull(),
+  load:integer("load").notNull().default(0),power:integer("power").notNull().default(0),availableHours:integer("available_hours").notNull().default(0),capability:text("capability").notNull(),
+  lastMaintenance:text("last_maintenance").notNull(),nextMaintenance:text("next_maintenance").notNull(),operator:text("operator").notNull(),alert:text("alert").notNull().default(""),enabled:integer("enabled",{mode:"boolean"}).notNull().default(true),
+  createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
