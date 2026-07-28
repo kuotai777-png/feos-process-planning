@@ -106,10 +106,18 @@ export default function AiDecomposition(){
     structures.length<4?"結構資訊不足：至少需有數量、接合、組裝及承載資訊":structures.length>8?"結構欄位過多：請確認是否存在重複或非必要資訊":"",
     processes.length<4?"加工資訊不足：無法完整評估製造可行性":processes.length>12?"加工項目過多：可能增加換站、搬運與製造成本":"",
   ].filter(Boolean);
+  const totalPartCount=parts.reduce((sum,value)=>sum+(Number(value.match(/[×xX]\s*(\d+)/)?.[1])||0),0);
+  const estimatedJoints=Math.max(0,totalPartCount-Math.max(3,Math.round(totalPartCount*.18)));
+  const processMatchesFlow=(process:string)=>flow.some(step=>step.includes(process.replace(" 定位",""))||process.includes(step));
+  const unlinkedProcesses=processes.filter(process=>!processMatchesFlow(process));
+  const linkedYield=Math.max(72,98-(hasSupportWarning?8:0)-partIssues.filter(Boolean).length*2-flowIssues.filter(Boolean).length*2);
+  useEffect(()=>{
+    setStructures(current=>current.map(item=>item.name.includes("板件數量")&&item.value!==`${totalPartCount} 件`?{...item,value:`${totalPartCount} 件`}:item));
+  },[totalPartCount]);
   const activeIssueCount=partIssues.filter(Boolean).length+structureIssues.filter(Boolean).length+processIssues.filter(Boolean).length+flowIssues.filter(Boolean).length+missingProcesses.length+(hasSupportWarning?1:0);
   const processFit=Math.max(68,96-Math.abs(processes.length-7)*4-(correctOrder?0:12));
   const timeScore=Math.max(62,91-Math.abs(flow.length-8)*3-(correctOrder?0:9));
-  const estimatedCost=1850+flow.length*165+Math.max(0,flow.length-8)*120+(correctOrder?0:480);
+  const estimatedCost=1250+totalPartCount*38+flow.length*165+Math.max(0,flow.length-8)*120+(correctOrder?0:480)+(hasSupportWarning?260:0);
   const restoreDefaults=(section:"parts"|"structures"|"processes"|"flow")=>{if(section==="parts")setParts(initialParts);if(section==="structures")setStructures(initialStructures);if(section==="processes")setProcesses(initialProcesses);if(section==="flow")setFlow(initialFlow);changed();notify("已載入 AI 預設項目")};
   const undoDelete=()=>{if(!lastDeleted)return;const insert=<T,>(list:T[],value:T,index:number)=>{const next=[...list];next.splice(Math.min(index,next.length),0,value);return next};if(lastDeleted.section==="parts")setParts(insert(parts,lastDeleted.value as string,lastDeleted.index));if(lastDeleted.section==="structures")setStructures(insert(structures,lastDeleted.value as {name:string;value:string},lastDeleted.index));if(lastDeleted.section==="processes")setProcesses(insert(processes,lastDeleted.value as string,lastDeleted.index));if(lastDeleted.section==="flow")setFlow(insert(flow,lastDeleted.value as string,lastDeleted.index));setLastDeleted(null);changed();notify("已復原誤刪項目")};
   const revalidate=()=>{
@@ -137,6 +145,7 @@ export default function AiDecomposition(){
         </section>
         <section className="decomp-results">
           <div className="engineering-heading"><div><span className="panel-kicker">AI DECOMPOSITION</span><h2>AI 分解結果</h2></div>{ready&&<span className="ai-result-tag">AI 建議值</span>}</div>
+          <div className="linked-analysis-bar" aria-live="polite"><div><span>零件總數</span><b>{totalPartCount} 件</b><small>連動結構分析</small></div><div><span>估算接合點</span><b>{estimatedJoints} 處</b><small>依零件數即時回算</small></div><div><span>流程同步</span><b className={unlinkedProcesses.length?"warn":""}>{unlinkedProcesses.length?`${unlinkedProcesses.length} 項待同步`:"已同步"}</b><small>加工方式 ↔ 製造流程</small></div><div><span>連動預估良率</span><b>{linkedYield}%</b><small>結構與流程共同計算</small></div></div>
           <AnalysisGroup title="零件分解" icon="▦" note="AI 辨識 4 類、共 21 件">
             <TrafficAssessment items={[
               {name:"結構安全",level:hasSupportWarning?"red":"green",detail:"中央支撐與受力位置可能不對稱，需增加補強方式。"},
@@ -160,11 +169,12 @@ export default function AiDecomposition(){
             <ValidationSummary count={processIssues.filter(Boolean).length+missingProcesses.length} okText="加工方式符合工程限制，必要工序完整"/>
             <EditableList values={processes} issues={processIssues} editable onChange={(i,v)=>update(processes,setProcesses,i,v)} onRemove={i=>remove("processes",processes,setProcesses,i)} tone="green"/>
             <div className="analysis-tools"><SuggestionPicker label="新增加工方式" suggestions={processSuggestions} onSelect={value=>add(processes,setProcesses,value)}/><button onClick={()=>restoreDefaults("processes")}>↻ 載入預設加工</button></div>
+            {unlinkedProcesses.length>0&&<div className="cross-link-notice"><div><b>加工方式尚未連動至製造流程</b><span>{unlinkedProcesses.join("、")}</span></div><button onClick={()=>{setFlow(current=>{const end=current.findIndex(item=>item.includes("包裝"));const next=[...current];next.splice(end<0?next.length:end,0,...unlinkedProcesses.map(item=>item.replace(" 定位","")));return next});setDragFeedback(`已將 ${unlinkedProcesses.length} 項加工方式加入流程，請拖曳調整順序。`);changed()}}>同步加入流程 →</button></div>}
           </AnalysisGroup>
           <AnalysisGroup title="製造流程" icon="→" note="拖曳卡片即可重新安排，AI 將即時評估">
             <ValidationSummary count={flowIssues.filter(Boolean).length+(!correctOrder?1:0)} okText="流程順序與前後製程關係正確"/>
             <div className="flow-dnd">{flow.map((v,i)=><div draggable onDragStart={()=>setDragIndex(i)} onDragOver={e=>e.preventDefault()} onDrop={()=>moveFlow(i)} className={`${dragIndex===i?"dragging":""} ${flowIssues[i]?"has-issue":""}`} key={`${v}-${i}`}><i>⋮⋮</i><span>{String(i+1).padStart(2,"0")}</span>{editing?<input value={v} onChange={e=>update(flow,setFlow,i,e.target.value)}/>:<b>{v}</b>}<button onClick={()=>remove("flow",flow,setFlow,i)}>×</button>{flowIssues[i]&&<small className="inline-issue">⚠ {flowIssues[i]}</small>}</div>)}<SuggestionPicker label="新增工序" suggestions={processSuggestions} onSelect={value=>add(flow,setFlow,value)}/></div>
-            <div className="live-evaluation"><header><div><b>AI 即時成效評估</b><small>流程調整後自動重新計算</small></div><em className={correctOrder?"good":"warning"}>● {correctOrder?"流程合理":"發現順序風險"}</em></header><div><article><span>設備適配率</span><b>{processFit}%</b><i style={{width:`${processFit}%`}}/></article><article><span>時間效率</span><b>{timeScore}%</b><i style={{width:`${timeScore}%`}}/></article><article><span>預估良率</span><b>{correctOrder?"97.6%":"89.5%"}</b><i style={{width:correctOrder?"97.6%":"89.5%"}}/></article></div>{!correctOrder&&<p>⚠ 建議維持「裁切 → CNC → 鑽孔」，並在組裝完成後進行砂磨，以降低定位誤差與返工風險。</p>}</div>
+            <div className="live-evaluation"><header><div><b>AI 即時成效評估</b><small>零件、結構、加工與流程任一變更皆會重新計算</small></div><em className={correctOrder?"good":"warning"}>● {correctOrder?"流程合理":"發現順序風險"}</em></header><div><article><span>設備適配率</span><b>{processFit}%</b><i style={{width:`${processFit}%`}}/></article><article><span>時間效率</span><b>{timeScore}%</b><i style={{width:`${timeScore}%`}}/></article><article><span>連動預估良率</span><b>{linkedYield}%</b><i style={{width:`${linkedYield}%`}}/></article></div>{!correctOrder&&<p>⚠ 建議維持「裁切 → CNC → 鑽孔」，並在組裝完成後進行砂磨，以降低定位誤差與返工風險。</p>}</div>
             <div className="flow-live-decision" aria-live="polite"><header><b>即時流程判斷與拖曳提示</b><span>自由拖曳 · 通常性 · 合理性 · 安全 · 成本</span></header><div><span className={flow.some(x=>x.includes("備料"))&&flow.findIndex(x=>x.includes("備料"))===0?"pass":"fail"}>備料起點</span><span className={flow.indexOf("裁切")<flow.indexOf("CNC")?"pass":"fail"}>裁切先於 CNC</span><span className={flow.indexOf("CNC")<flow.indexOf("鑽孔")?"pass":"fail"}>CNC 先於鑽孔</span><span className={flow.indexOf("組裝")<flow.indexOf("砂磨")?"pass":"fail"}>組裝先於砂磨</span></div><section><b>預估流程成本 NT$ {estimatedCost.toLocaleString()}</b><span>{flow.length>9?"工序偏多，換站與搬運成本上升":"工序數量位於合理範圍"}</span><button onClick={()=>{restoreDefaults("flow");setDragFeedback("已還原 AI 建議流程。")}}>↻ 還原建議流程</button></section><aside className={correctOrder?"safe":"caution"}><b>本次拖曳提示</b><span>{dragFeedback}</span></aside><p>{correctOrder&&flowIssues.every(issue=>!issue)?"✓ 目前流程可執行；人員仍可自由拖曳調整。":`⚠ 即時偵測 ${flowIssues.filter(Boolean).length+(!correctOrder?1:0)} 項流程風險，系統僅提示、不限制操作。`}</p></div>
           </AnalysisGroup>
           {validation==="checking"&&<div className="revalidation-overlay"><i/><div><b>AI 正在重新驗證所有修正</b><span>檢查資訊完整性、零件與結構合理性、加工相容性、流程順序及製造風險…</span><div><em>資料完整性</em><em>結構合理性</em><em>加工可行性</em><em>流程一致性</em></div></div></div>}
