@@ -38,9 +38,13 @@ export default function ManualReview(){
   const [reviewed,setReviewed]=useState(true);
   const [openRefs,setOpenRefs]=useState(true);
   const [toast,setToast]=useState("");
+  const [selectedSources,setSelectedSources]=useState(sources.map(source=>source[0]));
+  const [loadedSources,setLoadedSources]=useState(sources.map(source=>source[0]));
   const toggle=(v:string)=>setSelected(s=>s.includes(v)?s.filter(x=>x!==v):[...s,v]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
-  const verify=()=>{setReviewing(true);setReviewed(false);window.setTimeout(()=>{setReviewing(false);setReviewed(true);notify("AI Evidence Verification 已完成")},1600)};
+  const toggleSource=(name:string)=>setSelectedSources(current=>current.includes(name)?current.filter(item=>item!==name):[...current,name]);
+  const loadSources=()=>{setLoadedSources(selectedSources);setReviewed(false);notify(`已載入 ${selectedSources.length} 類資料，請執行 AI 複驗`)};
+  const verify=()=>{if(!loadedSources.length){notify("請至少載入一項複驗資料");return}setReviewing(true);setReviewed(false);window.setTimeout(()=>{setReviewing(false);setReviewed(true);notify(`AI 已依 ${loadedSources.length} 類資料完成複驗`)},1600)};
   return <AppLayout activeIndex={4} title="STEP 04 人工修正 / AI 複驗（Evidence Verification）" project={`${project.name} ${project.id}`}>
     <main className="evidence-page">
       <div className="evidence-statusbar">
@@ -58,7 +62,7 @@ export default function ManualReview(){
         <section className={`evidence-verification ${reviewing?"reviewing":""}`}>
           <div className="evidence-heading"><div><span className="panel-kicker">EVIDENCE VERIFICATION</span><h2>AI 複驗結果</h2></div><span className={`verification-status ${reviewed?"passed":""}`}>{reviewing?"驗證中…":"✓ 驗證通過"}</span></div>
           {reviewing?<div className="evidence-loading"><i/><h3>AI 正在重新驗證…</h3><p>比對官方標準、材料規範、技術手冊與產業證據</p><div><span/><span/><span/></div></div>:<>
-            <section className="source-section"><div className="evidence-section-title"><h3>驗證來源</h3><span>共 102 份證據</span></div><div className="source-grid">{sources.map(([name,detail,count])=><div key={name}><i>✓</i><p><b>{name}</b><span>{detail}</span></p><em>{count}</em></div>)}</div></section>
+            <section className="source-section"><div className="evidence-section-title"><h3>選擇複驗資料</h3><span>已載入 {loadedSources.length} / {sources.length} 類</span></div><div className="source-select-tools"><button onClick={()=>setSelectedSources(sources.map(source=>source[0]))}>全選</button><button onClick={()=>setSelectedSources([])}>清除</button><button className="load-evidence-btn" onClick={loadSources}>載入所選資料 ({selectedSources.length})</button></div><div className="source-grid selectable">{sources.map(([name,detail,count])=><label className={`${selectedSources.includes(name)?"selected":""} ${loadedSources.includes(name)?"loaded":""}`} key={name}><input type="checkbox" checked={selectedSources.includes(name)} onChange={()=>toggleSource(name)}/><i>{loadedSources.includes(name)?"✓":"+"}</i><p><b>{name}</b><span>{detail}</span></p><em>{count}</em></label>)}</div><p className="source-load-note">只有按下「載入所選資料」的來源會送入下一次 AI 複驗；可依案件需求增減標準、研究、專利、產業或內部資料。</p></section>
             <section className="result-section"><div className="evidence-section-title"><h3>驗證結果</h3><span>6 / 6 項通過</span></div><div className="result-grid">{results.map(([name,detail,status])=><div key={name}><i>✓</i><p><b>{name}</b><span>{detail}</span></p><em>{status}</em></div>)}</div></section>
             <section className="reference-section"><button onClick={()=>setOpenRefs(!openRefs)}><span><b>參考依據</b><small>可展開查看證據來源與匹配度</small></span><em>{openRefs?"收合 ↑":"展開 ↓"}</em></button>{openRefs&&<div className="reference-list">{references.map(ref=><div key={ref.code}><span className="ref-code">{ref.code}</span><p><b>{ref.title}</b><small>{ref.type}</small></p><div><b>{ref.match}%</b><span>匹配度</span></div></div>)}</div>}</section>
             <div className="evidence-confidence"><div><span>AI 信心水準</span><b>96%</b></div><div className="confidence-track"><i style={{width:"96%"}}/></div><p>高可信度 · 所有人工修正皆有充分證據支持，未發現標準或製造衝突。</p></div>
