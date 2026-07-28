@@ -1,7 +1,8 @@
 "use client";
-import {FormEvent,useMemo,useState} from "react";
+import {FormEvent,useEffect,useMemo,useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
 import {useActiveProject} from "../../hooks/useActiveProject";
+import {projectKey} from "../../lib/projectStore";
 
 type Plan={id:string;name:string;description:string;cost:number;hours:number;yieldRate:number;carbon:number;materialUtilization:number;recommended:boolean};
 const initialPlans:Plan[]=[
@@ -21,6 +22,8 @@ export default function AnalysisReports(){
   const selectedPlan=plans.find(plan=>plan.id===selected)??plans[0];
   const cpScore=Math.max(0,Math.min(100,Math.round(selectedPlan.yieldRate*.35+selectedPlan.materialUtilization*.25+(100-selectedPlan.hours*5)*.2+(100-selectedPlan.carbon*2)*.2)));
   const carbonShares=useMemo(()=>{const index=Math.max(0,plans.findIndex(plan=>plan.id===selectedPlan.id));const material=Math.max(38,48-index*3);const power=Math.max(20,27-index*2);const transport=Math.max(7,11-index);return {material,power,transport,other:100-material-power-transport}},[plans,selectedPlan.id]);
+  useEffect(()=>{const saved=localStorage.getItem(projectKey(project.id,"selected-plan"));if(saved&&plans.some(plan=>plan.id===saved))setSelected(saved)},[project.id]);
+  useEffect(()=>{localStorage.setItem(projectKey(project.id,"selected-plan"),selected)},[project.id,selected]);
   const notify=(text:string)=>{setToast(text);window.setTimeout(()=>setToast(""),2200)};
   const save=(event:FormEvent)=>{event.preventDefault();if(!editing)return;const item={...editing,id:editing.id||String.fromCharCode(65+plans.length)};setPlans(current=>current.some(plan=>plan.id===item.id)?current.map(plan=>plan.id===item.id?item:plan):[...current,item]);setSelected(item.id);setEditing(null);notify(`方案 ${item.id} 已加入分析報告並更新全部指標`)};
   const reportHtml=()=>`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>FEOS 分析報告</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#17324a}h1{color:#126fae}table{width:100%;border-collapse:collapse}th,td{padding:10px;border:1px solid #ccd8e2;text-align:left}th{background:#edf5fa}.summary{padding:14px;background:#eaf7ee;margin:20px 0}</style></head><body><h1>FEOS 製造方案分析報告</h1><p>專案：${project.name} ${project.id}｜客戶：${project.customer}</p><div class="summary">共 ${plans.length} 個方案；最低排碳方案：${best.name}（${best.carbon} kgCO₂e／件）</div><table><thead><tr><th>方案</th><th>說明</th><th>成本</th><th>工時</th><th>良率</th><th>材料利用率</th><th>排碳</th></tr></thead><tbody>${plans.map(plan=>`<tr><td>${plan.id} ${plan.name}</td><td>${plan.description}</td><td>NT$ ${plan.cost}</td><td>${plan.hours} 小時</td><td>${plan.yieldRate}%</td><td>${plan.materialUtilization}%</td><td>${plan.carbon} kgCO₂e</td></tr>`).join("")}</tbody></table><h2>排碳計算範圍</h2><p>材料取得、廠內用電、加工、搬運、耗材與包裝之估算值；正式揭露前仍應依實際能源及供應商數據覆核。</p></body></html>`;
