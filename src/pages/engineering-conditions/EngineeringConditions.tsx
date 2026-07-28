@@ -1,5 +1,5 @@
 "use client";
-import {ChangeEvent,useEffect,useMemo,useRef,useState} from "react";
+import {ChangeEvent,FormEvent,useEffect,useMemo,useRef,useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
 import {useActiveProject} from "../../hooks/useActiveProject";
 import {projectKey} from "../../lib/projectStore";
@@ -41,6 +41,8 @@ const aiPredictions:Record<string,string>={
   equipment:"CNC 加工中心、自動裁板機",forbiddenEquipment:"手動裁切鋸",method:"自動定位鑽孔",
   forbiddenMethod:"未定位人工釘合",cost:"2,900",margin:"18",leadTime:"14",
 };
+type ChatMessage={role:"user"|"ai";text:string};
+const welcomeMessage:ChatMessage={role:"ai",text:"您好，我是本專案的工程 AI 助理。可詢問尺寸、材料、加工方式、設備限制或交期風險，我會依目前工程條件回答。"};
 
 export default function EngineeringConditions(){
   const project=useActiveProject();
@@ -50,13 +52,19 @@ export default function EngineeringConditions(){
   const [fileName,setFileName]=useState("");
   const [analyzing,setAnalyzing]=useState(false);
   const [aiReady,setAiReady]=useState(false);
+  const [chatOpen,setChatOpen]=useState(false);
+  const [chatInput,setChatInput]=useState("");
+  const [chatting,setChatting]=useState(false);
+  const [messages,setMessages]=useState<ChatMessage[]>([welcomeMessage]);
   const fileInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{
     const storedImage=localStorage.getItem(projectKey(project.id,"product-image"));
     const storedName=localStorage.getItem(projectKey(project.id,"product-image-name"));
     const storedValues=localStorage.getItem(projectKey(project.id,"engineering-conditions"));
+    const storedChat=localStorage.getItem(projectKey(project.id,"engineering-chat"));
     setImageUrl(storedImage??"");setFileName(storedName??"");
     setValues(storedValues?JSON.parse(storedValues):initialValues);
+    setMessages(storedChat?JSON.parse(storedChat):[welcomeMessage]);
     if(storedImage)setImageUrl(storedImage);
     if(storedName)setFileName(storedName);
   },[project.id]);
@@ -100,6 +108,20 @@ export default function EngineeringConditions(){
     },1500);
   };
   const reset=()=>{setValues(Object.fromEntries(Object.keys(initialValues).map(k=>[k,""])));setAiReady(false);notify("條件已重設，可人工重新輸入")};
+  const askAi=(event:FormEvent)=>{
+    event.preventDefault();const question=chatInput.trim();if(!question||chatting)return;
+    const userMessage:ChatMessage={role:"user",text:question};
+    const pending=[...messages,userMessage];setMessages(pending);setChatInput("");setChatting(true);
+    window.setTimeout(()=>{
+      const lower=question.toLowerCase();
+      const answer=lower.includes("材料")?`目前指定材料為「${values.material||"尚未設定"}」。建議同時確認含水率、承載需求與供應穩定度；可替代材料為 ${values.alternatives||"尚未設定"}。`
+        :lower.includes("尺寸")||lower.includes("厚")?`目前尺寸為 ${values.length||"—"} × ${values.width||"—"} × ${values.height||"—"} mm，板厚 ${values.thickness||"—"} mm。若承載提高，建議先複核板厚、縱樑間距及接合點。`
+        :lower.includes("設備")||lower.includes("加工")?`目前指定設備為「${values.equipment||"尚未設定"}」，工法為「${values.method||"尚未設定"}」。AI 分析階段會進一步檢查設備能力、換刀與工序衝突。`
+        :lower.includes("交期")||lower.includes("成本")?`目前成本上限 NT$ ${values.cost||"—"}、交期 ${values.leadTime||"—"} 天、最低毛利 ${values.margin||"—"}%。建議在流程最佳化時同步評估材料利用率與設備負載。`
+        :`已收到問題：「${question}」。依目前專案資料，建議先確認產品照片與右側工程條件是否完整，再啟動 AI 預判；結果可由人員直接修正。`;
+      const next=[...pending,{role:"ai" as const,text:answer}];setMessages(next);localStorage.setItem(projectKey(project.id,"engineering-chat"),JSON.stringify(next));setChatting(false);
+    },850);
+  };
 
   const save=()=>{localStorage.setItem(projectKey(project.id,"engineering-conditions"),JSON.stringify(values));notify("工程條件已儲存至目前專案")};
   return <AppLayout activeIndex={2} title="STEP 02 製造商工程條件設定" project={`${project.name} ${project.id}`}>
@@ -144,6 +166,14 @@ export default function EngineeringConditions(){
       </div>
     </main>
     <footer className="conditions-footer"><span>資料來源：產品圖片＋人工工程條件</span><div><button className="btn btn-secondary" onClick={save}>▣ 儲存條件</button><button className="btn btn-primary ai-action" onClick={analyze} disabled={analyzing}>{analyzing?"AI 分析中…":"✦ AI 工程條件預判"}</button></div></footer>
+    <button className={`ai-chat-launcher ${chatOpen?"active":""}`} onClick={()=>setChatOpen(!chatOpen)} aria-label="開啟工程 AI 對話">{chatOpen?"×":"✦"}<span>{chatOpen?"關閉":"詢問工程 AI"}</span></button>
+    {chatOpen&&<aside className="ai-chat-panel" aria-label="工程 AI 對話框">
+      <header><div><i>AI</i><span><b>工程 AI 助理</b><small>專案：{project.name} {project.id}</small></span></div><button onClick={()=>setChatOpen(false)}>×</button></header>
+      <div className="chat-context"><span>目前參考</span><b>產品圖片 · 工程條件 · 專案資料</b></div>
+      <div className="chat-messages">{messages.map((message,index)=><div className={`chat-message ${message.role}`} key={index}><span>{message.role==="ai"?"AI":"人員"}</span><p>{message.text}</p></div>)}{chatting&&<div className="chat-message ai typing"><span>AI</span><p>正在分析<span>•••</span></p></div>}</div>
+      <div className="chat-prompts">{["材料是否合適？","尺寸有何風險？","設備能否加工？"].map(q=><button key={q} onClick={()=>setChatInput(q)}>{q}</button>)}</div>
+      <form onSubmit={askAi}><textarea value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="輸入工程問題…" rows={2}/><button disabled={!chatInput.trim()||chatting}>送出 ↑</button></form>
+    </aside>}
     {toast&&<div className="toast" role="status">{toast}</div>}
   </AppLayout>;
 }
