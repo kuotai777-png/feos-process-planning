@@ -4,6 +4,7 @@ import {useRouter} from "next/navigation";
 import {AppLayout} from "../../components/layout/AppLayout";
 import {useActiveProject} from "../../hooks/useActiveProject";
 import {projectKey} from "../../lib/projectStore";
+import {calculateProcessCost,defaultProcessCosts,findProcessCost,ProcessCost} from "../../lib/processCostStore";
 
 const initialParts=["面板 × 6","縱樑 × 3","支撐塊 × 9","底板 × 3"];
 const initialProcesses=["裁切","CNC 定位","鑽孔","倒角","砂磨","組裝","表面處理"];
@@ -32,6 +33,7 @@ export default function AiDecomposition(){
   const [validation,setValidation]=useState<"idle"|"checking"|"passed"|"issues">("idle");
   const [confirmed,setConfirmed]=useState(false);
   const [engineeringConditions,setEngineeringConditions]=useState<Record<string,string>>({});
+  const [costRates,setCostRates]=useState<ProcessCost[]>(defaultProcessCosts);
   const [lastDeleted,setLastDeleted]=useState<{section:"parts"|"structures"|"processes"|"flow";value:string|{name:string;value:string};index:number}|null>(null);
   const [dragFeedback,setDragFeedback]=useState("尚未調整流程；拖曳後系統會依新位置提供評估提示。");
   const [toast,setToast]=useState("");
@@ -45,6 +47,7 @@ export default function AiDecomposition(){
     if(saved){const data=JSON.parse(saved);setParts(data.parts??initialParts);setProcesses(data.processes??initialProcesses);setFlow(data.flow??initialFlow);setStructures(data.structures??initialStructures);setReady(Boolean(data.ready));setValidation(data.validation??"idle");setConfirmed(Boolean(data.confirmed))}
     else{setParts(initialParts);setProcesses(initialProcesses);setFlow(initialFlow);setStructures(initialStructures);setReady(false);setValidation("idle");setConfirmed(false)}
   },[project.id]);
+  useEffect(()=>{fetch("/api/process-costs").then(response=>response.ok?response.json():Promise.reject()).then(setCostRates).catch(()=>setCostRates(defaultProcessCosts))},[]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
   const upload=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const dataUrl=String(reader.result??"");setImage(dataUrl);setName(f.name);localStorage.setItem(projectKey(project.id,"product-image"),dataUrl);localStorage.setItem(projectKey(project.id,"product-image-name"),f.name);setReady(false);notify("產品圖片已載入")};reader.readAsDataURL(f)};
   const saveAnalysis=(isReady=ready,nextValidation=validation,nextConfirmed=confirmed)=>localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,ready:isReady,validation:nextValidation,confirmed:nextConfirmed}));
@@ -118,9 +121,11 @@ export default function AiDecomposition(){
   const processFit=Math.max(68,96-Math.abs(processes.length-7)*4-(correctOrder?0:12));
   const timeScore=Math.max(62,91-Math.abs(flow.length-8)*3-(correctOrder?0:9));
   const materialCost=totalPartCount*38;
-  const processingCost=processes.length*95;
+  const ratedFlow=flow.map(step=>({step,rate:findProcessCost(step,costRates)}));
+  const missingCostRates=ratedFlow.filter(item=>!item.rate).map(item=>item.step);
+  const processingCost=ratedFlow.reduce((sum,item)=>sum+(item.rate?calculateProcessCost(item.rate,totalPartCount):0),0);
   const structureCost=structures.length*35+(hasSupportWarning?260:0);
-  const flowCost=flow.length*165+Math.max(0,flow.length-8)*120+(correctOrder?0:480);
+  const flowCost=Math.max(0,flow.length-8)*120+(correctOrder?0:480);
   const estimatedCost=1250+materialCost+processingCost+structureCost+flowCost;
   const baselineCost=4173;
   const costDelta=estimatedCost-baselineCost;
@@ -152,6 +157,7 @@ export default function AiDecomposition(){
         <section className="decomp-results">
           <div className="engineering-heading"><div><span className="panel-kicker">AI DECOMPOSITION</span><h2>AI 分解結果</h2></div>{ready&&<span className="ai-result-tag">AI 建議值</span>}</div>
           <div className="linked-analysis-bar" aria-live="polite"><div><span>零件總數</span><b>{totalPartCount} 件</b><small>連動結構分析</small></div><div><span>估算接合點</span><b>{estimatedJoints} 處</b><small>依零件數即時回算</small></div><div><span>流程同步</span><b className={unlinkedProcesses.length?"warn":""}>{unlinkedProcesses.length?`${unlinkedProcesses.length} 項待同步`:"已同步"}</b><small>加工方式 ↔ 製造流程</small></div><div><span>連動預估良率</span><b>{linkedYield}%</b><small>結構與流程共同計算</small></div><div className="linked-cost"><span>預估流程成本</span><b>NT$ {estimatedCost.toLocaleString()}</b><small className={costDelta>0?"up":"down"}>{costDelta===0?"與基準相同":`${costDelta>0?"▲":"▼"} NT$ ${Math.abs(costDelta).toLocaleString()}`}</small></div></div>
+          {missingCostRates.length>0&&<div className="cost-rate-warning" role="alert"><div><b>費率資料尚未完整</b><span>「{missingCostRates.join("、")}」尚未在知識庫建立費率，目前不計入流程成本。</span></div><button onClick={()=>router.push("/knowledge-connectors")}>前往補建費率 →</button></div>}
           <AnalysisGroup title="零件分解" icon="▦" note="AI 辨識 4 類、共 21 件">
             <TrafficAssessment items={[
               {name:"結構安全",level:hasSupportWarning?"red":"green",detail:"中央支撐與受力位置可能不對稱，需增加補強方式。"},

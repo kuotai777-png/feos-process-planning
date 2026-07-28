@@ -32,3 +32,21 @@ export const evidenceSources=sqliteTable("evidence_sources",{
   addedBy:text("added_by").notNull().default("ai"),
   createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const processCosts=sqliteTable("process_costs",{
+  id:text("id").primaryKey(),
+  processName:text("process_name").notNull(),
+  aliases:text("aliases").notNull().default("[]"),
+  category:text("category").notNull(),
+  equipment:text("equipment").notNull(),
+  setupCost:integer("setup_cost").notNull().default(0),
+  unitCost:integer("unit_cost").notNull().default(0),
+  minuteCost:integer("minute_cost").notNull().default(0),
+  laborCost:integer("labor_cost").notNull().default(0),
+  estimatedMinutes:integer("estimated_minutes").notNull().default(0),
+  source:text("source").notNull(),
+  effectiveDate:text("effective_date").notNull(),
+  enabled:integer("enabled",{mode:"boolean"}).notNull().default(true),
+  createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
