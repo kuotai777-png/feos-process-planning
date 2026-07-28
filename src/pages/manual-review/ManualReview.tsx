@@ -1,6 +1,8 @@
 "use client";
 import {useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
+import Link from "next/link";
+import {useActiveProject} from "../../hooks/useActiveProject";
 
 const corrections=[
   {name:"修改尺寸",detail:"面板高度 150 → 145 mm"},
@@ -29,6 +31,7 @@ const references=[
 ];
 
 export default function ManualReview(){
+  const project=useActiveProject();
   const [selected,setSelected]=useState(corrections.map(x=>x.name));
   const [reason,setReason]=useState("依現場設備加工範圍與材料庫存調整，並補充官方標準作為複驗依據。");
   const [reviewing,setReviewing]=useState(false);
@@ -38,7 +41,7 @@ export default function ManualReview(){
   const toggle=(v:string)=>setSelected(s=>s.includes(v)?s.filter(x=>x!==v):[...s,v]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
   const verify=()=>{setReviewing(true);setReviewed(false);window.setTimeout(()=>{setReviewing(false);setReviewed(true);notify("AI Evidence Verification 已完成")},1600)};
-  return <AppLayout activeIndex={4} title="STEP 04 人工修正 / AI 複驗（Evidence Verification）" project="托盤 NEW-001">
+  return <AppLayout activeIndex={4} title="STEP 04 人工修正 / AI 複驗（Evidence Verification）" project={`${project.name} ${project.id}`}>
     <main className="evidence-page">
       <div className="evidence-statusbar">
         <div><span>修正版本</span><b>REV. 04</b></div><div><span>修正項目</span><b>{selected.length} 項</b></div>
@@ -50,7 +53,7 @@ export default function ManualReview(){
           <div className="evidence-heading"><div><span className="panel-kicker">HUMAN CORRECTION</span><h1>人工修正後資料</h1></div><span className="revision-badge">工程師覆核</span></div>
           <div className="correction-list"><div className="evidence-section-title"><h2>修正內容</h2><span>選擇納入複驗的項目</span></div>{corrections.map(item=><label className={selected.includes(item.name)?"selected":""} key={item.name}><input type="checkbox" checked={selected.includes(item.name)} onChange={()=>toggle(item.name)}/><div><b>{item.name}</b><span>{item.detail}</span></div><em>{selected.includes(item.name)?"✓":""}</em></label>)}</div>
           <div className="reason-block"><div className="evidence-section-title"><h2>修正原因</h2><span>{reason.length} / 300</span></div><textarea maxLength={300} value={reason} onChange={e=>setReason(e.target.value)} placeholder="輸入工程判斷、現場限制或修改依據…"/></div>
-          <div className="correction-summary"><b>本次複驗範圍</b><div><span>結構尺寸</span><span>替代材料</span><span>加工工序</span><span>品質風險</span><span>成本影響</span></div></div>
+          <div className="correction-summary"><b>本次複驗範圍</b><div><span>結構尺寸</span><span>替代材料</span><span>加工工序</span><span>品質風險</span><span>成本影響</span></div><Link className="evidence-hub-link" href="/knowledge-connectors">開啟 AI 證據與資料串連中心 →</Link></div>
         </section>
         <section className={`evidence-verification ${reviewing?"reviewing":""}`}>
           <div className="evidence-heading"><div><span className="panel-kicker">EVIDENCE VERIFICATION</span><h2>AI 複驗結果</h2></div><span className={`verification-status ${reviewed?"passed":""}`}>{reviewing?"驗證中…":"✓ 驗證通過"}</span></div>

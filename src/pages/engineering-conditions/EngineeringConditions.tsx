@@ -1,6 +1,8 @@
 "use client";
 import {ChangeEvent,useEffect,useMemo,useRef,useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
+import {useActiveProject} from "../../hooks/useActiveProject";
+import {projectKey} from "../../lib/projectStore";
 
 const groups=[
   {title:"尺寸要求",icon:"↔",fields:[
@@ -41,6 +43,7 @@ const aiPredictions:Record<string,string>={
 };
 
 export default function EngineeringConditions(){
+  const project=useActiveProject();
   const [toast,setToast]=useState("");
   const [values,setValues]=useState<Record<string,string>>(initialValues);
   const [imageUrl,setImageUrl]=useState("");
@@ -49,11 +52,14 @@ export default function EngineeringConditions(){
   const [aiReady,setAiReady]=useState(false);
   const fileInput=useRef<HTMLInputElement>(null);
   useEffect(()=>{
-    const storedImage=sessionStorage.getItem("feos-product-image");
-    const storedName=sessionStorage.getItem("feos-product-image-name");
+    const storedImage=localStorage.getItem(projectKey(project.id,"product-image"));
+    const storedName=localStorage.getItem(projectKey(project.id,"product-image-name"));
+    const storedValues=localStorage.getItem(projectKey(project.id,"engineering-conditions"));
+    setImageUrl(storedImage??"");setFileName(storedName??"");
+    setValues(storedValues?JSON.parse(storedValues):initialValues);
     if(storedImage)setImageUrl(storedImage);
     if(storedName)setFileName(storedName);
-  },[]);
+  },[project.id]);
   const completion=useMemo(()=>{
     const filled=Object.values(values).filter(Boolean).length;
     return Math.round(filled/Object.keys(initialValues).length*100);
@@ -70,8 +76,8 @@ export default function EngineeringConditions(){
       const dataUrl=String(reader.result??"");
       setImageUrl(dataUrl);
       setFileName(file.name);
-      sessionStorage.setItem("feos-product-image",dataUrl);
-      sessionStorage.setItem("feos-product-image-name",file.name);
+      localStorage.setItem(projectKey(project.id,"product-image"),dataUrl);
+      localStorage.setItem(projectKey(project.id,"product-image-name"),file.name);
       setAiReady(false);
       notify("產品圖片已載入，AI 分析頁面將自動帶入");
     };
@@ -79,8 +85,8 @@ export default function EngineeringConditions(){
   };
   const removeImage=()=>{
     setImageUrl("");setFileName("");setAiReady(false);
-    sessionStorage.removeItem("feos-product-image");
-    sessionStorage.removeItem("feos-product-image-name");
+    localStorage.removeItem(projectKey(project.id,"product-image"));
+    localStorage.removeItem(projectKey(project.id,"product-image-name"));
     if(fileInput.current)fileInput.current.value="";
   };
   const analyze=()=>{
@@ -88,18 +94,19 @@ export default function EngineeringConditions(){
     setAnalyzing(true);setAiReady(false);
     window.setTimeout(()=>{
       setValues(aiPredictions);
-      sessionStorage.setItem("feos-engineering-conditions",JSON.stringify(aiPredictions));
+      localStorage.setItem(projectKey(project.id,"engineering-conditions"),JSON.stringify(aiPredictions));
       setAnalyzing(false);setAiReady(true);
       notify("AI 預判完成，所有欄位皆可人工修改");
     },1500);
   };
   const reset=()=>{setValues(Object.fromEntries(Object.keys(initialValues).map(k=>[k,""])));setAiReady(false);notify("條件已重設，可人工重新輸入")};
 
-  return <AppLayout activeIndex={2} title="STEP 02 製造商工程條件設定" project="托盤 NEW-001">
+  const save=()=>{localStorage.setItem(projectKey(project.id,"engineering-conditions"),JSON.stringify(values));notify("工程條件已儲存至目前專案")};
+  return <AppLayout activeIndex={2} title="STEP 02 製造商工程條件設定" project={`${project.name} ${project.id}`}>
     <main className="conditions-page">
       <div className="conditions-context">
-        <div><span className="context-label">客戶</span><b>大成木業有限公司</b></div>
-        <div><span className="context-label">產品類別</span><b>工業用木製托盤</b></div>
+        <div><span className="context-label">客戶</span><b>{project.customer}</b></div>
+        <div><span className="context-label">產品類別</span><b>{project.product}</b></div>
         <div><span className="context-label">條件完整度</span><b className="completion-value">{completion}%</b></div>
         <span className={`condition-status ${aiReady?"ai-complete":""}`}>● {aiReady?"AI 預判完成":"草稿已儲存"}</span>
       </div>
@@ -136,7 +143,7 @@ export default function EngineeringConditions(){
         </section>
       </div>
     </main>
-    <footer className="conditions-footer"><span>資料來源：產品圖片＋人工工程條件</span><div><button className="btn btn-secondary" onClick={()=>notify("工程條件已儲存")}>▣ 儲存條件</button><button className="btn btn-primary ai-action" onClick={analyze} disabled={analyzing}>{analyzing?"AI 分析中…":"✦ AI 工程條件預判"}</button></div></footer>
+    <footer className="conditions-footer"><span>資料來源：產品圖片＋人工工程條件</span><div><button className="btn btn-secondary" onClick={save}>▣ 儲存條件</button><button className="btn btn-primary ai-action" onClick={analyze} disabled={analyzing}>{analyzing?"AI 分析中…":"✦ AI 工程條件預判"}</button></div></footer>
     {toast&&<div className="toast" role="status">{toast}</div>}
   </AppLayout>;
 }

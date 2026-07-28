@@ -1,6 +1,7 @@
 "use client";
 import {useState} from "react";
 import {AppLayout} from "../../components/layout/AppLayout";
+import {useActiveProject} from "../../hooks/useActiveProject";
 
 const goals=["降低材料成本","減少加工工時","降低換刀次數","降低加工次數","降低搬運次數","提高材料利用率","提高良率","提高組裝便利性","降低人力需求","符合設備能力","符合交期"];
 const flow=[["備料","材料檢查與含水率確認"],["板材最佳化排版","AI 套料，優先使用餘料"],["裁切","自動裁板機批次裁切"],["CNC 加工","集中完成輪廓與槽位"],["鑽孔","自動定位一次完成"],["倒角","同刀具批次倒角"],["組裝","治具定位後螺釘固定"],["表面處理","砂磨、防霉處理"],["品質檢驗","尺寸、外觀與承載抽驗"],["包裝","標示批次並入庫"]];
@@ -10,6 +11,7 @@ const metrics=[
   ["人力需求","2.5 人","▼ -1 人","good"],["預估交期","12 天","提前 2 天","good"],
 ];
 export default function AiOptimization(){
+  const project=useActiveProject();
   const [selected,setSelected]=useState(goals);
   const [running,setRunning]=useState(false);
   const [version,setVersion]=useState(3);
@@ -17,7 +19,7 @@ export default function AiOptimization(){
   const toggle=(g:string)=>setSelected(s=>s.includes(g)?s.filter(x=>x!==g):[...s,g]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
   const optimize=()=>{setRunning(true);window.setTimeout(()=>{setRunning(false);setVersion(v=>v+1);notify("AI 已完成重新最佳化")},1500)};
-  return <AppLayout activeIndex={6} title="STEP 05 AI 最佳化加工規劃" project="托盤 NEW-001">
+  return <AppLayout activeIndex={6} title="STEP 05 AI 最佳化加工規劃" project={`${project.name} ${project.id}`}>
     <main className="optimization-page">
       <div className="optimization-summary"><div><span>最佳化版本</span><b>V{version}.0</b></div><div><span>選定目標</span><b>{selected.length} / {goals.length}</b></div><div><span>綜合改善指數</span><b className="score">91.8</b></div><span className="optimization-status">● AI 最佳方案</span></div>
       <section className="optimization-goals panel-surface"><div className="optimization-heading"><div><span className="panel-kicker">OPTIMIZATION OBJECTIVES</span><h1>AI 最佳化目標</h1></div><button onClick={()=>setSelected(selected.length===goals.length?[]:goals)}>{selected.length===goals.length?"取消全選":"全部選取"}</button></div><div className="goal-grid">{goals.map((g,i)=><label className={selected.includes(g)?"selected":""} key={g}><input type="checkbox" checked={selected.includes(g)} onChange={()=>toggle(g)}/><span>{["＄","◷","⌁","⚙","⇄","▦","✓","⌘","♙","▣","▤"][i]}</span><b>{g}</b><em>{selected.includes(g)?"✓":""}</em></label>)}</div></section>

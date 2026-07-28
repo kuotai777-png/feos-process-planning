@@ -3,10 +3,10 @@ import Link from "next/link";
 import {useState} from "react";
 
 const items=[
-  ["⌂","首頁總覽","#"],["▣","專案管理","#"],["☷","需求管理","/engineering-conditions"],
+  ["⌂","首頁總覽","#"],["▣","專案管理","/projects"],["☷","需求管理","/engineering-conditions"],
   ["⚙","AI 分析","/ai-decomposition"],["✎","人工修正","/manual-review"],["▤","AI 複驗","/manual-review"],["▧","分析報告","/ai-optimization"],
   ["▦","加工流程規劃","/"],["▥","製程文件","#"],["▤","生產排程","#"],["▦","設備管理","#"],
-  ["▥","知識庫","#"],["▥","數據統計","#"],["⚙","系統設定","#"],
+  ["▥","知識庫","/knowledge-connectors"],["▥","數據統計","#"],["⚙","系統設定","#"],
 ] as const;
 
 export function AppLayout({children,activeIndex=7,title="STEP 06 AI 加工流程規劃",project}:{children:React.ReactNode;activeIndex?:number;title?:string;project?:string}) {
