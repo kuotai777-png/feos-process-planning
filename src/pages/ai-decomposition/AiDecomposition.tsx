@@ -32,6 +32,7 @@ export default function AiDecomposition(){
   const [validation,setValidation]=useState<"idle"|"checking"|"passed"|"issues">("idle");
   const [confirmed,setConfirmed]=useState(false);
   const [engineeringConditions,setEngineeringConditions]=useState<Record<string,string>>({});
+  const [lastDeleted,setLastDeleted]=useState<{section:"parts"|"structures"|"processes"|"flow";value:string|{name:string;value:string};index:number}|null>(null);
   const [toast,setToast]=useState("");
   const input=useRef<HTMLInputElement>(null);
   useEffect(()=>{
@@ -49,11 +50,19 @@ export default function AiDecomposition(){
   const analyze=()=>{if(!image){notify("請先於需求管理載入產品圖片");return}setAnalyzing(true);window.setTimeout(()=>{setAnalyzing(false);setReady(true);setValidation("idle");setConfirmed(false);localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,ready:true,validation:"idle",confirmed:false}));notify("AI 分解分析完成，請人工覆核")},1500)};
   const changed=()=>{setValidation("idle");setConfirmed(false)};
   const update=(list:string[],setList:(v:string[])=>void,i:number,v:string)=>{setList(list.map((x,n)=>n===i?v:x));changed()};
-  const remove=(list:string[],setList:(v:string[])=>void,i:number)=>{setList(list.filter((_,n)=>n!==i));changed()};
+  const remove=(section:"parts"|"processes"|"flow",list:string[],setList:(v:string[])=>void,i:number)=>{setLastDeleted({section,value:list[i],index:i});setList(list.filter((_,n)=>n!==i));changed()};
   const add=(list:string[],setList:(v:string[])=>void,label:string)=>{if(!list.includes(label))setList([...list,label]);setEditing(true);changed()};
   const moveFlow=(target:number)=>{
     if(dragIndex===null||dragIndex===target)return;
-    const next=[...flow];const [item]=next.splice(dragIndex,1);next.splice(target,0,item);setFlow(next);setDragIndex(null);
+    const next=[...flow];const [item]=next.splice(dragIndex,1);next.splice(target,0,item);
+    const indexOf=(key:string)=>next.findIndex(value=>value.includes(key));
+    const invalidReason=indexOf("備料")!==0?"備料必須維持第一站"
+      :indexOf("包裝")!==next.length-1?"包裝必須維持最後一站"
+      :indexOf("裁切")>indexOf("CNC")?"裁切必須早於 CNC"
+      :indexOf("CNC")>indexOf("鑽孔")?"CNC 定位必須早於鑽孔"
+      :indexOf("組裝")>indexOf("砂磨")?"組裝必須早於砂磨":"";
+    if(invalidReason){setDragIndex(null);notify(`已阻擋拖曳：${invalidReason}`);return}
+    setFlow(next);setDragIndex(null);
     changed();
   };
   const correctOrder=flow.indexOf("裁切")<flow.indexOf("CNC")&&flow.indexOf("CNC")<flow.indexOf("鑽孔")&&flow.indexOf("組裝")<flow.indexOf("砂磨");
@@ -86,9 +95,17 @@ export default function AiDecomposition(){
     if(value.includes("砂磨")&&flow.findIndex(item=>item.includes("組裝"))>index)return "砂磨不可早於組裝";
     return "";
   });
+  const informationWarnings=[
+    parts.length<4?"零件資訊不足：至少需包含主要板件、支撐與底部構件":parts.length>10?"零件分類過多：建議合併同類零件，避免重複拆解":"",
+    structures.length<4?"結構資訊不足：至少需有數量、接合、組裝及承載資訊":structures.length>8?"結構欄位過多：請確認是否存在重複或非必要資訊":"",
+    processes.length<4?"加工資訊不足：無法完整評估製造可行性":processes.length>12?"加工項目過多：可能增加換站、搬運與製造成本":"",
+  ].filter(Boolean);
   const activeIssueCount=partIssues.filter(Boolean).length+structureIssues.filter(Boolean).length+processIssues.filter(Boolean).length+flowIssues.filter(Boolean).length+missingProcesses.length+(hasSupportWarning?1:0);
   const processFit=Math.max(68,96-Math.abs(processes.length-7)*4-(correctOrder?0:12));
   const timeScore=Math.max(62,91-Math.abs(flow.length-8)*3-(correctOrder?0:9));
+  const estimatedCost=1850+flow.length*165+Math.max(0,flow.length-8)*120+(correctOrder?0:480);
+  const restoreDefaults=(section:"parts"|"structures"|"processes"|"flow")=>{if(section==="parts")setParts(initialParts);if(section==="structures")setStructures(initialStructures);if(section==="processes")setProcesses(initialProcesses);if(section==="flow")setFlow(initialFlow);changed();notify("已載入 AI 預設項目")};
+  const undoDelete=()=>{if(!lastDeleted)return;const insert=<T,>(list:T[],value:T,index:number)=>{const next=[...list];next.splice(Math.min(index,next.length),0,value);return next};if(lastDeleted.section==="parts")setParts(insert(parts,lastDeleted.value as string,lastDeleted.index));if(lastDeleted.section==="structures")setStructures(insert(structures,lastDeleted.value as {name:string;value:string},lastDeleted.index));if(lastDeleted.section==="processes")setProcesses(insert(processes,lastDeleted.value as string,lastDeleted.index));if(lastDeleted.section==="flow")setFlow(insert(flow,lastDeleted.value as string,lastDeleted.index));setLastDeleted(null);changed();notify("已復原誤刪項目")};
   const revalidate=()=>{
     saveAnalysis();setEditing(false);setValidation("checking");setConfirmed(false);
     window.setTimeout(()=>{
@@ -122,36 +139,38 @@ export default function AiDecomposition(){
               {name:"資料完整性",level:hasIncomplete?"yellow":"green",detail:"仍有空白或尚未完成的新增項目。"},
             ]}/>
             <ValidationSummary count={partIssues.filter(Boolean).length+(hasSupportWarning?1:0)} okText="所有零件名稱、數量及支撐關係均符合需求"/>
-            <EditableList values={parts} issues={partIssues} editable onChange={(i,v)=>update(parts,setParts,i,v)} onRemove={i=>remove(parts,setParts,i)} tone="blue"/>
-            <SuggestionPicker label="新增零件" suggestions={partSuggestions} onSelect={value=>add(parts,setParts,value)}/>
+            <EditableList values={parts} issues={partIssues} editable onChange={(i,v)=>update(parts,setParts,i,v)} onRemove={i=>remove("parts",parts,setParts,i)} tone="blue"/>
+            <div className="analysis-tools"><SuggestionPicker label="新增零件" suggestions={partSuggestions} onSelect={value=>add(parts,setParts,value)}/><button onClick={()=>restoreDefaults("parts")}>↻ 載入預設零件</button></div>
           </AnalysisGroup>
           <AnalysisGroup title="結構分析" icon="⌘" note="依圖片與工程條件推估">
             <div className="structure-grid">
-              {structures.map((item,i)=><label className={structureIssues[i]?"has-issue":""} key={i}><input className="structure-name" value={item.name} onChange={e=>{setStructures(s=>s.map((x,n)=>n===i?{...x,name:e.target.value}:x));changed()}}/><input value={item.value} onChange={e=>{setStructures(s=>s.map((x,n)=>n===i?{...x,value:e.target.value}:x));changed()}}/><button onClick={()=>{setStructures(s=>s.filter((_,n)=>n!==i));changed()}} aria-label="刪除結構項目">×</button>{structureIssues[i]&&<small className="inline-issue">⚠ {structureIssues[i]}</small>}</label>)}
+              {structures.map((item,i)=><label className={structureIssues[i]?"has-issue":""} key={i}><input className="structure-name" value={item.name} onChange={e=>{setStructures(s=>s.map((x,n)=>n===i?{...x,name:e.target.value}:x));changed()}}/><input value={item.value} onChange={e=>{setStructures(s=>s.map((x,n)=>n===i?{...x,value:e.target.value}:x));changed()}}/><button onClick={()=>{setLastDeleted({section:"structures",value:item,index:i});setStructures(s=>s.filter((_,n)=>n!==i));changed()}} aria-label="刪除結構項目">×</button>{structureIssues[i]&&<small className="inline-issue">⚠ {structureIssues[i]}</small>}</label>)}
             </div>
             <ValidationSummary count={structureIssues.filter(Boolean).length+(hasSupportWarning?1:0)} okText="結構欄位完整，未發現重複或受力衝突"/>
-            <div className="structure-assessment"><b>AI 結構評估</b><span>承載路徑完整</span>{hasSupportWarning&&<span className="warn">中央區域可能產生應力集中</span>}<SuggestionPicker label="增加分析項目" suggestions={structureSuggestions.map(x=>`${x.name}｜${x.value}`)} onSelect={value=>{const [itemName,itemValue]=value.split("｜");if(!structures.some(x=>x.name===itemName))setStructures([...structures,{name:itemName,value:itemValue}]);setEditing(true);changed()}}/></div>
+            <div className="structure-assessment"><b>AI 結構評估</b><span>承載路徑完整</span>{hasSupportWarning&&<span className="warn">中央區域可能產生應力集中</span>}<SuggestionPicker label="增加分析項目" suggestions={structureSuggestions.map(x=>`${x.name}｜${x.value}`)} onSelect={value=>{const [itemName,itemValue]=value.split("｜");if(!structures.some(x=>x.name===itemName))setStructures([...structures,{name:itemName,value:itemValue}]);setEditing(true);changed()}}/><button onClick={()=>restoreDefaults("structures")}>↻ 載入預設</button></div>
           </AnalysisGroup>
           <AnalysisGroup title="加工方式分析" icon="⚙" note="可人工增刪或修正">
             {missingProcesses.length>0&&<div className="section-live-warning" role="alert"><b>必要加工方式缺漏</b><span>缺少：{missingProcesses.join("、")}</span></div>}
             <ValidationSummary count={processIssues.filter(Boolean).length+missingProcesses.length} okText="加工方式符合工程限制，必要工序完整"/>
-            <EditableList values={processes} issues={processIssues} editable onChange={(i,v)=>update(processes,setProcesses,i,v)} onRemove={i=>remove(processes,setProcesses,i)} tone="green"/>
-            <SuggestionPicker label="新增加工方式" suggestions={processSuggestions} onSelect={value=>add(processes,setProcesses,value)}/>
+            <EditableList values={processes} issues={processIssues} editable onChange={(i,v)=>update(processes,setProcesses,i,v)} onRemove={i=>remove("processes",processes,setProcesses,i)} tone="green"/>
+            <div className="analysis-tools"><SuggestionPicker label="新增加工方式" suggestions={processSuggestions} onSelect={value=>add(processes,setProcesses,value)}/><button onClick={()=>restoreDefaults("processes")}>↻ 載入預設加工</button></div>
           </AnalysisGroup>
           <AnalysisGroup title="製造流程" icon="→" note="拖曳卡片即可重新安排，AI 將即時評估">
             <ValidationSummary count={flowIssues.filter(Boolean).length+(!correctOrder?1:0)} okText="流程順序與前後製程關係正確"/>
-            <div className="flow-dnd">{flow.map((v,i)=><div draggable onDragStart={()=>setDragIndex(i)} onDragOver={e=>e.preventDefault()} onDrop={()=>moveFlow(i)} className={`${dragIndex===i?"dragging":""} ${flowIssues[i]?"has-issue":""}`} key={`${v}-${i}`}><i>⋮⋮</i><span>{String(i+1).padStart(2,"0")}</span>{editing?<input value={v} onChange={e=>update(flow,setFlow,i,e.target.value)}/>:<b>{v}</b>}<button onClick={()=>remove(flow,setFlow,i)}>×</button>{flowIssues[i]&&<small className="inline-issue">⚠ {flowIssues[i]}</small>}</div>)}<SuggestionPicker label="新增工序" suggestions={processSuggestions} onSelect={value=>add(flow,setFlow,value)}/></div>
+            <div className="flow-dnd">{flow.map((v,i)=><div draggable onDragStart={()=>setDragIndex(i)} onDragOver={e=>e.preventDefault()} onDrop={()=>moveFlow(i)} className={`${dragIndex===i?"dragging":""} ${flowIssues[i]?"has-issue":""}`} key={`${v}-${i}`}><i>⋮⋮</i><span>{String(i+1).padStart(2,"0")}</span>{editing?<input value={v} onChange={e=>update(flow,setFlow,i,e.target.value)}/>:<b>{v}</b>}<button onClick={()=>remove("flow",flow,setFlow,i)}>×</button>{flowIssues[i]&&<small className="inline-issue">⚠ {flowIssues[i]}</small>}</div>)}<SuggestionPicker label="新增工序" suggestions={processSuggestions} onSelect={value=>add(flow,setFlow,value)}/></div>
             <div className="live-evaluation"><header><div><b>AI 即時成效評估</b><small>流程調整後自動重新計算</small></div><em className={correctOrder?"good":"warning"}>● {correctOrder?"流程合理":"發現順序風險"}</em></header><div><article><span>設備適配率</span><b>{processFit}%</b><i style={{width:`${processFit}%`}}/></article><article><span>時間效率</span><b>{timeScore}%</b><i style={{width:`${timeScore}%`}}/></article><article><span>預估良率</span><b>{correctOrder?"97.6%":"89.5%"}</b><i style={{width:correctOrder?"97.6%":"89.5%"}}/></article></div>{!correctOrder&&<p>⚠ 建議維持「裁切 → CNC → 鑽孔」，並在組裝完成後進行砂磨，以降低定位誤差與返工風險。</p>}</div>
-            <div className="flow-live-decision" aria-live="polite"><header><b>即時流程判斷</b><span>每次增刪、編修或拖曳後立即更新</span></header><div><span className={flow.some(x=>x.includes("備料"))?"pass":"fail"}>備料起點</span><span className={flow.indexOf("裁切")<flow.indexOf("CNC")?"pass":"fail"}>裁切先於 CNC</span><span className={flow.indexOf("CNC")<flow.indexOf("鑽孔")?"pass":"fail"}>CNC 先於鑽孔</span><span className={flow.indexOf("組裝")<flow.indexOf("砂磨")?"pass":"fail"}>組裝先於砂磨</span></div><p>{correctOrder&&flowIssues.every(issue=>!issue)?"✓ 目前流程可執行，未發現前後工序衝突。":`⚠ 即時偵測 ${flowIssues.filter(Boolean).length+(!correctOrder?1:0)} 項流程風險，請依紅色項目調整。`}</p></div>
+            <div className="flow-live-decision" aria-live="polite"><header><b>即時流程判斷與拖曳防護</b><span>通常性 · 合理性 · 安全 · 成本</span></header><div><span className={flow.some(x=>x.includes("備料"))?"pass":"fail"}>備料起點</span><span className={flow.indexOf("裁切")<flow.indexOf("CNC")?"pass":"fail"}>裁切先於 CNC</span><span className={flow.indexOf("CNC")<flow.indexOf("鑽孔")?"pass":"fail"}>CNC 先於鑽孔</span><span className={flow.indexOf("組裝")<flow.indexOf("砂磨")?"pass":"fail"}>組裝先於砂磨</span></div><section><b>預估流程成本 NT$ {estimatedCost.toLocaleString()}</b><span>{flow.length>9?"工序偏多，換站與搬運成本上升":"工序數量位於合理範圍"}</span><button onClick={()=>restoreDefaults("flow")}>↻ 還原建議流程</button></section><p>{correctOrder&&flowIssues.every(issue=>!issue)?"✓ 目前流程可執行；不合理拖曳將由系統直接阻擋。":`⚠ 即時偵測 ${flowIssues.filter(Boolean).length+(!correctOrder?1:0)} 項流程風險，請依紅色項目調整。`}</p></div>
           </AnalysisGroup>
           {validation==="checking"&&<div className="revalidation-overlay"><i/><div><b>AI 正在重新驗證所有修正</b><span>檢查資訊完整性、零件與結構合理性、加工相容性、流程順序及製造風險…</span><div><em>資料完整性</em><em>結構合理性</em><em>加工可行性</em><em>流程一致性</em></div></div></div>}
           {validation==="passed"&&<div className="validation-result passed"><span>✓</span><div><b>AI 再驗證通過</b><p>所有資訊完整，結構示警已排除，加工方式與製造流程合理。請按「確認分析」完成本階段。</p></div></div>}
           {validation==="issues"&&<div className="validation-result issues"><span>!</span><div><b>AI 再驗證未通過</b><p>{hasSupportWarning?"結構補強問題尚未排除。":hasIncomplete?"尚有空白或未完成的新增項目。":"製造流程順序或資料完整性仍需修正。"}</p></div><button onClick={()=>setEditing(true)}>返回修正</button></div>}
         </section>
       </div>
+      {informationWarnings.length>0&&<div className="information-balance-warning"><b>AI 資訊量即時判斷</b>{informationWarnings.map(message=><span key={message}>⚠ {message}</span>)}</div>}
     </main>
     <footer className="conditions-footer"><span>{confirmed?"分析已確認，可進入下一階段":"修正後必須通過 AI 再驗證並完成確認"}</span><div><button className="btn btn-secondary" onClick={()=>editing?revalidate():setEditing(true)} disabled={validation==="checking"}>✎ {editing?"完成修正並啟動 AI 再驗證":"人工修正"}</button><button className="btn btn-outline" onClick={confirmAnalysis} disabled={validation!=="passed"||confirmed}>{confirmed?"✓ 已確認":"✓ 確認分析"}</button><button className="btn btn-primary" disabled={ready&&!confirmed} onClick={!ready?analyze:()=>router.push("/manual-review")}>{!ready?(analyzing?"AI 分析中…":"✦ 開始 AI 分析"):confirmed?"下一步 →":"等待確認"}</button></div></footer>
     {toast&&<div className="toast" role="status">{toast}</div>}
+    {lastDeleted&&<div className="undo-delete">項目已刪除<button onClick={undoDelete}>復原</button><button onClick={()=>setLastDeleted(null)}>×</button></div>}
   </AppLayout>;
 }
 
