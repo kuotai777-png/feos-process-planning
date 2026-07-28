@@ -17,12 +17,15 @@ const initialStructures=[
 const partSuggestions=["中央補強塊 × 3","防滑墊 × 6","護角件 × 4","識別銘牌 × 1"];
 const structureSuggestions=[{name:"補強方式",value:"中央支撐補強"},{name:"承載方向",value:"四向均勻承載"},{name:"安全係數",value:"1.5"},{name:"最大載重",value:"1,200 kg"}];
 const processSuggestions=["含水率檢測","尺寸檢驗","壓合固定","承載測試","條碼標示"];
+type ProductImage={id:string;name:string;url:string};
 
 export default function AiDecomposition(){
   const router=useRouter();
   const project=useActiveProject();
   const [image,setImage]=useState("");
   const [name,setName]=useState("");
+  const [images,setImages]=useState<ProductImage[]>([]);
+  const [activeImage,setActiveImage]=useState(0);
   const [parts,setParts]=useState(initialParts);
   const [processes,setProcesses]=useState(initialProcesses);
   const [flow,setFlow]=useState(initialFlow);
@@ -41,8 +44,11 @@ export default function AiDecomposition(){
   const [toast,setToast]=useState("");
   const input=useRef<HTMLInputElement>(null);
   useEffect(()=>{
-    setImage(localStorage.getItem(projectKey(project.id,"product-image"))??"");
-    setName(localStorage.getItem(projectKey(project.id,"product-image-name"))??"");
+    const legacyImage=localStorage.getItem(projectKey(project.id,"product-image"))??"";
+    const legacyName=localStorage.getItem(projectKey(project.id,"product-image-name"))??"";
+    const savedImages=localStorage.getItem(projectKey(project.id,"product-images"));
+    const loaded:ProductImage[]=savedImages?JSON.parse(savedImages):legacyImage?[{id:"primary",name:legacyName||"產品照片",url:legacyImage}]:[];
+    setImages(loaded);setActiveImage(0);setImage(loaded[0]?.url??"");setName(loaded[0]?.name??"");
     const saved=localStorage.getItem(projectKey(project.id,"ai-decomposition"));
     const conditions=localStorage.getItem(projectKey(project.id,"engineering-conditions"));
     setEngineeringConditions(conditions?JSON.parse(conditions):{});
@@ -52,8 +58,11 @@ export default function AiDecomposition(){
   useEffect(()=>{fetch("/api/process-costs").then(response=>response.ok?response.json():Promise.reject()).then(setCostRates).catch(()=>setCostRates(defaultProcessCosts))},[]);
   useEffect(()=>{fetch("/api/resource-catalog").then(response=>response.ok?response.json():Promise.reject()).then(setResourceCatalog).catch(()=>setResourceCatalog(defaultResourceCatalog))},[]);
   const notify=(t:string)=>{setToast(t);window.setTimeout(()=>setToast(""),2200)};
-  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const dataUrl=String(reader.result??"");setImage(dataUrl);setName(f.name);localStorage.setItem(projectKey(project.id,"product-image"),dataUrl);localStorage.setItem(projectKey(project.id,"product-image-name"),f.name);setReady(false);notify("產品圖片已載入")};reader.readAsDataURL(f)};
-  const saveAnalysis=(isReady=ready,nextValidation=validation,nextConfirmed=confirmed)=>localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,ready:isReady,validation:nextValidation,confirmed:nextConfirmed}));
+  const persistImages=(next:ProductImage[])=>{setImages(next);localStorage.setItem(projectKey(project.id,"product-images"),JSON.stringify(next));if(next[0]){localStorage.setItem(projectKey(project.id,"product-image"),next[0].url);localStorage.setItem(projectKey(project.id,"product-image-name"),next[0].name)}else{localStorage.removeItem(projectKey(project.id,"product-image"));localStorage.removeItem(projectKey(project.id,"product-image-name"))}};
+  const upload=(e:ChangeEvent<HTMLInputElement>)=>{const files=Array.from(e.target.files??[]).slice(0,Math.max(0,8-images.length));if(!files.length)return;Promise.all(files.map(file=>new Promise<ProductImage>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({id:crypto.randomUUID(),name:file.name,url:String(reader.result??"")});reader.onerror=reject;reader.readAsDataURL(file)}))).then(added=>{const next=[...images,...added];persistImages(next);const index=images.length;setActiveImage(index);setImage(next[index].url);setName(next[index].name);setReady(false);notify(`已加入 ${added.length} 張圖片，共 ${next.length} 張`)})};
+  const selectImage=(index:number)=>{setActiveImage(index);setImage(images[index]?.url??"");setName(images[index]?.name??"")};
+  const removeImage=(index:number)=>{const next=images.filter((_,position)=>position!==index);persistImages(next);const nextIndex=Math.max(0,Math.min(index,next.length-1));setActiveImage(nextIndex);setImage(next[nextIndex]?.url??"");setName(next[nextIndex]?.name??"");setReady(false);notify("已移除圖片，精準度已重新計算")};
+  const saveAnalysis=(isReady=ready,nextValidation=validation,nextConfirmed=confirmed)=>localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,imageCount:images.length,imageAccuracy,ready:isReady,validation:nextValidation,confirmed:nextConfirmed}));
   const analyze=()=>{if(!image){notify("請先於需求管理載入產品圖片");return}setAnalyzing(true);window.setTimeout(()=>{setAnalyzing(false);setReady(true);setValidation("idle");setConfirmed(false);localStorage.setItem(projectKey(project.id,"ai-decomposition"),JSON.stringify({parts,processes,flow,structures,ready:true,validation:"idle",confirmed:false}));notify("AI 分解分析完成，請人工覆核")},1500)};
   const changed=()=>{setValidation("idle");setConfirmed(false)};
   const update=(list:string[],setList:(v:string[])=>void,i:number,v:string)=>{setList(list.map((x,n)=>n===i?v:x));changed()};
@@ -147,19 +156,25 @@ export default function AiDecomposition(){
     },1800);
   };
   const confirmAnalysis=()=>{if(validation!=="passed"){notify("需先完成修正並通過 AI 再驗證");return}setConfirmed(true);localStorage.setItem(projectKey(project.id,"ai-analysis-confirmed"),"true");saveAnalysis(true,"passed",true);notify("分析已完成確認，可進入下一階段")};
+  const imageAccuracy=Math.min(97,images.length?68+Math.min(images.length,5)*6-(images.length===1?2:0):0);
+  const imageCompleteness=Math.min(100,images.length*22);
+  const viewLabels=["主視圖","側視圖","俯視圖","底部／背面","接合細節","尺寸標示","材質細節","其他細節"];
+  const imageAdvice=images.length===0?"請先載入至少一張產品全貌照片。":images.length===1?"建議補充側面、俯視及接合細節，降低遮蔽造成的零件誤判。":images.length===2?"已有基本雙視角；建議再加入俯視或底部照片，以確認板件數量與接合位置。":images.length<4?"視角覆蓋良好；若產品具有隱藏接點，建議補拍接合或五金細節。":"多視角資料完整，可提升尺寸比例、零件數量與結構關係的判讀穩定性。";
   return <AppLayout activeIndex={3} title="STEP 03 AI 分解分析" project={`${project.name} ${project.id}`}>
     <main className="decomp-page">
       <div className="decomp-summary"><div><span>分析狀態</span><b className={ready?"done":""}>{ready?"● AI 分析完成":"○ 等待圖片"}</b></div><div><span>AI 再驗證</span><b className={validation==="passed"?"done":""}>{validation==="checking"?"檢查中…":validation==="passed"?"● 全部通過":validation==="issues"?"● 尚有問題":"尚未執行"}</b></div><div><span>完成確認</span><b className={confirmed?"done":""}>{confirmed?"● 已確認":editing?"修正中":"等待確認"}</b></div></div>
       <div className="decomp-workspace">
         <section className="decomp-image-panel">
           <div className="panel-heading"><div><span className="panel-kicker">PRODUCT IMAGE</span><h1>產品圖片</h1></div><span className="revision-badge">{name||"尚未載入"}</span></div>
-          <input ref={input} className="sr-only-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={upload}/>
+          <input ref={input} className="sr-only-file" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={upload}/>
           <div className={`decomp-image-stage ${image?"has-image":""}`}>
             {image?<img src={image} alt="載入的產品圖片"/>:<div className="upload-placeholder"><span>▧</span><b>載入產品圖片</b><small>AI 將辨識零件、結構與加工特徵</small></div>}
             {analyzing&&<div className="ai-scanning"><i/><strong>AI 正在分解產品結構…</strong><span>辨識零件邊界、接合點與加工特徵</span></div>}
           </div>
-          <div className="upload-actions"><button className="btn btn-primary" onClick={()=>input.current?.click()}>＋ {image?"更換圖片":"載入產品圖片"}</button>{image&&<button className="btn btn-secondary" onClick={()=>{setImage("");setName("");setReady(false);localStorage.removeItem(projectKey(project.id,"product-image"));localStorage.removeItem(projectKey(project.id,"product-image-name"))}}>移除圖片</button>}</div>
-          <div className="image-analysis-hint">✦ 圖片需清楚呈現產品全貌。建議使用正面、側面或斜角照片，AI 判讀結果仍須由工程人員覆核。</div>
+          {images.length>0&&<div className="multi-image-strip">{images.map((item,index)=><button className={activeImage===index?"active":""} onClick={()=>selectImage(index)} key={item.id}><img src={item.url} alt={`${viewLabels[index]??"產品"}縮圖`}/><span>{viewLabels[index]??`視圖 ${index+1}`}</span><i onClick={event=>{event.stopPropagation();removeImage(index)}}>×</i></button>)}</div>}
+          <div className="upload-actions"><button className="btn btn-primary" onClick={()=>input.current?.click()} disabled={images.length>=8}>＋ {images.length?"增加其他視角":"載入產品圖片"}</button><span>可一次多選 · 最多 8 張 · 已載入 {images.length} 張</span></div>
+          <div className="image-accuracy-panel" aria-live="polite"><div><span>AI 圖像分析精準度</span><b>{imageAccuracy}%</b><i><em style={{width:`${imageAccuracy}%`}}/></i></div><div><span>視角資料完整度</span><b>{imageCompleteness}%</b><i><em style={{width:`${imageCompleteness}%`}}/></i></div><p><strong>AI 建議</strong>{imageAdvice}</p></div>
+          <div className="image-analysis-hint">✦ 精準度依圖片數量與視角覆蓋推估。建議包含產品全貌、側面、俯視、底部、接合點與材質細節；最終結果仍須由工程人員覆核。</div>
         </section>
         <section className="decomp-results">
           <div className="engineering-heading"><div><span className="panel-kicker">AI DECOMPOSITION</span><h2>AI 分解結果</h2></div>{ready&&<span className="ai-result-tag">AI 建議值</span>}</div>
