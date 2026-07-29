@@ -11,18 +11,24 @@ async function database(){
   if(!process.env.DATABASE_URL)return null;
   sqlClientPromise??=(async()=>{
     const sql=postgres(process.env.DATABASE_URL!,{max:5,ssl:"require"});
-    await sql`
-      create table if not exists feos_collections (
-        collection_name text not null,
-        item_id text not null,
-        payload jsonb not null,
-        updated_at timestamptz not null default now(),
-        primary key (collection_name,item_id)
-      )
-    `;
-    return sql;
+    try{
+      await sql`
+        create table if not exists feos_collections (
+          collection_name text not null,
+          item_id text not null,
+          payload jsonb not null,
+          updated_at timestamptz not null default now(),
+          primary key (collection_name,item_id)
+        )
+      `;
+      return sql;
+    }catch{
+      await sql.end({timeout:1}).catch(()=>{});
+      sqlClientPromise=undefined;
+      return null as unknown as SqlClient;
+    }
   })();
-  return sqlClientPromise;
+  return (await sqlClientPromise)||null;
 }
 
 async function fileFor(name:string){
