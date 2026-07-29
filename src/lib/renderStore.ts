@@ -21,6 +21,11 @@ async function database(){
           primary key (collection_name,item_id)
         )
       `;
+      await sql`
+        update feos_collections
+        set payload=(payload #>> '{}')::jsonb
+        where jsonb_typeof(payload)='string'
+      `;
       return sql;
     }catch{
       await sql.end({timeout:1}).catch(()=>{});
@@ -47,7 +52,7 @@ export async function readCollection<T extends {id:string}>(name:string,defaults
     if(!rows.length&&defaults.length){
       await Promise.all(defaults.map(item=>sql`
         insert into feos_collections (collection_name,item_id,payload)
-        values (${name},${item.id},${JSON.stringify(item)}::jsonb)
+        values (${name},${item.id},${sql.json(item)})
         on conflict (collection_name,item_id) do nothing
       `));
       rows=await sql<{payload:T}[]>`
@@ -76,7 +81,7 @@ export async function writeCollection<T>(name:string,items:T[]){
       for(const item of records){
         await transaction`
           insert into feos_collections (collection_name,item_id,payload)
-          values (${name},${item.id},${JSON.stringify(item)}::jsonb)
+          values (${name},${item.id},${transaction.json(item)})
         `;
       }
     });
@@ -93,7 +98,7 @@ export async function upsertCollectionItem<T extends {id:string}>(name:string,de
   if(sql){
     await sql`
       insert into feos_collections (collection_name,item_id,payload,updated_at)
-      values (${name},${item.id},${JSON.stringify(item)}::jsonb,now())
+      values (${name},${item.id},${sql.json(item)},now())
       on conflict (collection_name,item_id)
       do update set payload=excluded.payload,updated_at=now()
     `;
