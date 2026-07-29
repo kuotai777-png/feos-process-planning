@@ -13,3 +13,14 @@ services:
         value: render
       - key: RENDER_DATA_DIR
         value: /tmp/feos-data
+      - key: DATABASE_URL
+        fromDatabase:
+          name: feos-database
+          property: connectionString
+
+databases:
+  - name: feos-database
+    plan: free
+    databaseName: feos
+    user: feos
+    region: singapore
