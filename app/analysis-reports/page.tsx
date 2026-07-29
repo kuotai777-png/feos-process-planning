@@ -1,2 +1,2 @@
-import AnalysisReports from "../../src/pages/analysis-reports/AnalysisReports";
+import AnalysisReports from "../../src/screens/analysis-reports/AnalysisReports";
 export default function Page(){return <AnalysisReports/>}

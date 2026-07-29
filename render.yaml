@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: feos-process-planning
+    runtime: node
+    plan: free
+    branch: master
+    buildCommand: npm ci && npm run render:build
+    startCommand: npm run render:start
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: FEOS_RUNTIME
+        value: render
+      - key: RENDER_DATA_DIR
+        value: /tmp/feos-data

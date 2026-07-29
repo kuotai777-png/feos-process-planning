@@ -163,7 +163,7 @@ export default function EngineeringConditions(){
           {aiReady&&<div className="ai-notice">✦ AI 已填入預判值　<span>藍色標記代表 AI 建議，請人工覆核後儲存。</span></div>}
           <div className="condition-groups">{groups.map(group=><fieldset className="condition-group" key={group.title}>
             <legend><span>{group.icon}</span>{group.title}</legend>
-            <div className="condition-fields">{group.fields.map(field=><label className={`condition-field ${aiReady?"ai-suggested":""}`} key={field.key}><span>{field.label}{aiReady&&<small>AI</small>}</span><div className="field-control">{field.unit&&<em>{field.unit}</em>}<input list={field.key==="material"||field.key==="alternatives"?"feos-material-options":undefined} value={values[field.key]??""} onChange={e=>setValues(v=>({...v,[field.key]:e.target.value}))} aria-label={field.label}/></div></label>)}</div>
+            <div className="condition-fields">{group.fields.map(field=><label className={`condition-field ${aiReady?"ai-suggested":""}`} key={field.key}><span>{field.label}{aiReady&&<small>AI</small>}</span><div className="field-control">{"unit" in field&&field.unit&&<em>{field.unit}</em>}<input list={field.key==="material"||field.key==="alternatives"?"feos-material-options":undefined} value={values[field.key]??""} onChange={e=>setValues(v=>({...v,[field.key]:e.target.value}))} aria-label={field.label}/></div></label>)}</div>
           </fieldset>)}</div>
           <datalist id="feos-material-options">{catalog.filter(item=>item.kind==="material"&&item.enabled).map(item=><option key={item.id} value={item.name}>{item.specification} · NT$ {item.unitPrice}/{item.unit}</option>)}</datalist>
         </section>

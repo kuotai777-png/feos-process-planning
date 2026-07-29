@@ -1,2 +1,2 @@
-import AiOptimization from "../../src/pages/ai-optimization/AiOptimization";
+import AiOptimization from "../../src/screens/ai-optimization/AiOptimization";
 export default function AiOptimizationPage(){return <AiOptimization/>}
