@@ -1,5 +1,5 @@
 import {sql} from "drizzle-orm";
-import {integer,sqliteTable,text} from "drizzle-orm/sqlite-core";
+import {AnySQLiteColumn,check,integer,real,sqliteTable,text} from "drizzle-orm/sqlite-core";
 
 export const projects=sqliteTable("projects",{
   id:text("id").primaryKey(),
@@ -77,4 +77,56 @@ export const equipmentAssets=sqliteTable("equipment_assets",{
   load:integer("load").notNull().default(0),power:integer("power").notNull().default(0),availableHours:integer("available_hours").notNull().default(0),capability:text("capability").notNull(),
   lastMaintenance:text("last_maintenance").notNull(),nextMaintenance:text("next_maintenance").notNull(),operator:text("operator").notNull(),alert:text("alert").notNull().default(""),enabled:integer("enabled",{mode:"boolean"}).notNull().default(true),
   createdAt:text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),updatedAt:text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+export const materials=sqliteTable("materials",{
+  id:text("id").primaryKey(),
+  materialCode:text("material_code").notNull().unique(),
+  materialName:text("material_name").notNull(),
+  unit:text("unit").notNull(),
+  unitCost:real("unit_cost").notNull().default(0),
+  defaultWasteRate:real("default_waste_rate").notNull().default(0),
+  alternativeMaterialId:text("alternative_material_id").references(():AnySQLiteColumn=>materials.id,{onDelete:"set null"}),
+});
+
+export const bomCalculationRules=sqliteTable("bom_calculation_rules",{
+  id:text("id").primaryKey(),
+  projectId:text("project_id").references(()=>projects.id,{onDelete:"cascade"}),
+  templateCode:text("template_code"),
+  partName:text("part_name").notNull(),
+  formulaExpression:text("formula_expression").notNull(),
+  defaultMaterialId:text("default_material_id").references(()=>materials.id,{onDelete:"set null"}),
+},(table)=>[
+  check("bom_rules_project_or_template_check",sql`${table.projectId} is not null or ${table.templateCode} is not null`),
+]);
+
+export const offcutInventory=sqliteTable("offcut_inventory",{
+  id:text("id").primaryKey(),
+  materialId:text("material_id").notNull().references(()=>materials.id,{onDelete:"cascade"}),
+  length:integer("length").notNull(),
+  width:integer("width"),
+  thickness:integer("thickness"),
+  residualValue:real("residual_value").notNull().default(0),
+  status:text("status").notNull().default("available"),
+},(table)=>[
+  check("offcut_inventory_status_check",sql`${table.status} in ('available','locked','used')`),
+]);
+
+export const quotes=sqliteTable("quotes",{
+  id:text("id").primaryKey(),
+  quoteNo:text("quote_no").notNull().unique(),
+  projectId:text("project_id").notNull().references(()=>projects.id,{onDelete:"cascade"}),
+  customerName:text("customer_name").notNull(),
+  targetBudget:real("target_budget"),
+  status:text("status").notNull().default("draft"),
+});
+
+export const quoteVersions=sqliteTable("quote_versions",{
+  id:text("id").primaryKey(),
+  quoteId:text("quote_id").notNull().references(()=>quotes.id,{onDelete:"cascade"}),
+  versionNumber:text("version_number").notNull(),
+  internalCostJson:text("internal_cost_json",{mode:"json"}).$type<Record<string,unknown>>().notNull().default({}),
+  clientFacingJson:text("client_facing_json",{mode:"json"}).$type<Record<string,unknown>>().notNull().default({}),
+  totalQuotePrice:real("total_quote_price").notNull().default(0),
+  calculatedMargin:real("calculated_margin").notNull().default(0),
+  createdAt:integer("created_at").notNull().default(sql`(unixepoch())`),
 });
