@@ -32,6 +32,7 @@ const bomDetail=z.object({
   material_code:z.string().trim().min(1).max(100),
   quantity:z.number().finite().positive(),
   unit:z.string().trim().min(1).max(20),
+  is_non_standard:z.boolean().default(false),
   offcut_ids:z.array(z.string().trim().min(1).max(100)).max(500).default([]),
 }).strict();
 

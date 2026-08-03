@@ -50,6 +50,20 @@
       "when": 1785740988479,
       "tag": "0006_aberrant_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785741771654,
+      "tag": "0007_goofy_maximus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785742222419,
+      "tag": "0008_quick_mother_askani",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,78 @@
+.shell{min-height:100vh;padding:42px clamp(18px,4vw,64px) 80px;background:radial-gradient(circle at 90% 0,rgba(37,99,235,.10),transparent 30%),#f5f7fb;color:#172033;font-size:16px;line-height:1.55}
+.header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;max-width:1320px;margin:0 auto 24px}
+.kicker{color:#2563eb;font-size:12px;font-weight:900;letter-spacing:.16em}
+.header h1{margin:7px 0 4px;font-size:28px;line-height:1.25}
+.header p{margin:0;color:#64748b}
+.header nav{display:flex;gap:6px;padding:5px;border:1px solid #dce3ec;border-radius:12px;background:#fff}
+.header nav a{padding:9px 14px;border-radius:8px;color:#64748b;text-decoration:none;font-weight:700}
+.header nav .activeLink{background:#173c32;color:#fff}
+.summaryStrip{display:grid;grid-template-columns:180px 180px minmax(240px,1fr);max-width:1320px;margin:0 auto 20px;overflow:hidden;border:1px solid #dfe5ec;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.05)}
+.summaryStrip>div{padding:17px 20px;border-right:1px solid #e8edf3}
+.summaryStrip>div:last-child{border:0}
+.summaryStrip span,.summaryStrip strong{display:block}
+.summaryStrip span{color:#7b899b;font-size:13px}
+.summaryStrip strong{margin-top:4px;font-size:24px}
+.summaryStrip .email{overflow:hidden;font-size:16px;text-overflow:ellipsis}
+.queue{display:grid;gap:14px;max-width:1320px;margin:auto}
+.approvalCard{overflow:hidden;border:1px solid #dce3ea;border-left:4px solid #e59b2f;border-radius:15px;background:#fff;box-shadow:0 6px 22px rgba(15,23,42,.04)}
+.approvalMain{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 24px}
+.quoteNo{color:#2563eb;font-size:13px;font-weight:900;letter-spacing:.06em}
+.approvalMain h2{margin:5px 0 2px;font-size:20px}
+.approvalMain p{margin:0;color:#b45309;font-size:14px;font-weight:700}
+.metrics{display:grid;grid-template-columns:90px 110px minmax(150px,1fr);margin:0}
+.metrics>div{padding:3px 18px;border-left:1px solid #e8edf2}
+.metrics dt{color:#8794a5;font-size:12px}
+.metrics dd{margin:4px 0 0;font-size:18px;font-weight:800;text-align:left}
+.metrics .danger{color:#c2413b}
+.approvalActions{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:15px 20px;border-top:1px solid #e9edf2;background:#f8fafc}
+.approvalActions input,.lossForm input,.lossForm select,.lossForm textarea{width:100%;padding:10px 14px;border:1px solid #ccd6e1;border-radius:9px;background:#fff;font-size:16px;outline:0}
+.approvalActions input:focus,.lossForm input:focus,.lossForm select:focus,.lossForm textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px #dbeafe}
+.approveButton,.returnButton{min-height:44px;padding:10px 18px;border-radius:9px;font-size:16px;font-weight:800}
+.approveButton{border:1px solid #1d6e50;background:#1d6e50;color:#fff}
+.returnButton{border:1px solid #d2d9e2;background:#fff;color:#a13a35}
+.approveButton:disabled,.returnButton:disabled{opacity:.55;cursor:wait}
+.success,.error{grid-column:1/-1;padding:11px 14px;border-radius:9px;font-size:14px;font-weight:700}
+.success{border:1px solid #bbdfce;background:#effaf4;color:#176b49}
+.error{border:1px solid #f2c4c0;background:#fff2f1;color:#b42318}
+.empty,.denied{max-width:1320px;margin:auto;padding:58px 24px;border:1px dashed #ccd6e1;border-radius:16px;background:#fff;color:#64748b;text-align:center}
+.denied{max-width:680px;margin-top:10vh}
+.denied span{color:#c2413b;font-size:14px;font-weight:900;letter-spacing:.15em}
+.denied h1{margin:8px 0;font-size:28px;color:#172033}
+.denied p{margin:0}
+.analyticsGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1320px;margin:auto}
+.panel{padding:24px;border:1px solid #dfe5ec;border-radius:17px;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.045)}
+.panelTitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.panelTitle span{color:#7b899b;font-size:12px;font-weight:800;letter-spacing:.08em}
+.panelTitle h2{margin:3px 0 0;font-size:20px}
+.panelTitle>strong{font-size:24px}
+.pieWrap{display:grid;grid-template-columns:210px 1fr;align-items:center;gap:30px}
+.pie{display:grid;place-items:center;width:190px;height:190px;border-radius:50%}
+.pie>span{display:grid;place-items:center;width:124px;height:124px;border-radius:50%;background:#fff;font-size:30px;font-weight:900;box-shadow:0 2px 9px rgba(15,23,42,.08)}
+.pie small{display:block;color:#7b899b;font-size:12px;font-weight:600}
+.legend{display:grid;gap:13px}
+.legend>div{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:9px}
+.legend i{width:10px;height:10px;border-radius:50%}
+.legend span{color:#556274}.legend b{font-size:18px}
+.bars{display:grid;gap:21px}
+.bars header{display:flex;justify-content:space-between;margin-bottom:7px}
+.bars header span{color:#46556a;font-weight:700}
+.bars>div>i{display:block;height:10px;overflow:hidden;border-radius:99px;background:#edf1f5}
+.bars em{display:block;min-width:2px;height:100%;border-radius:99px}
+.competitors{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.competitors li{display:flex;justify-content:space-between;padding:13px 2px;border-bottom:1px solid #e9edf2}
+.competitors li:last-child{border:0}
+.competitors b{color:#2563eb}
+.emptySmall{padding:45px 10px;color:#8a97a7;text-align:center}
+.formPanel{grid-column:1/-1}
+.lossForm{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px}
+.lossForm label{display:grid;gap:6px;color:#526176;font-size:14px;font-weight:800}
+.lossForm .wide{grid-column:1/-1}
+.lossForm textarea{min-height:88px;resize:vertical}
+.lossForm>button{grid-column:3;justify-self:end;min-width:150px}
+
+@media(max-width:880px){
+  .header{align-items:flex-start;flex-direction:column}.summaryStrip{grid-template-columns:1fr 1fr}.summaryStrip>div:last-child{grid-column:1/-1;border-top:1px solid #e8edf3}.approvalMain{align-items:flex-start;flex-direction:column}.metrics{width:100%}.metrics>div:first-child{border-left:0;padding-left:0}.analyticsGrid{grid-template-columns:1fr}.formPanel{grid-column:auto}.pieWrap{grid-template-columns:1fr}.pie{margin:auto}.lossForm{grid-template-columns:1fr}.lossForm .wide,.lossForm>button{grid-column:auto}.lossForm>button{width:100%}
+}
+@media(max-width:600px){
+  .shell{padding:24px 14px 60px}.header h1{font-size:25px}.header nav{width:100%}.header nav a{flex:1;text-align:center}.summaryStrip{grid-template-columns:1fr}.summaryStrip>div,.summaryStrip>div:last-child{grid-column:auto;border-right:0;border-bottom:1px solid #e8edf3}.summaryStrip>div:last-child{border-bottom:0}.approvalMain{padding:18px}.metrics{grid-template-columns:1fr}.metrics>div,.metrics>div:first-child{padding:10px 0;border:0;border-top:1px solid #e8edf2}.approvalActions{grid-template-columns:1fr 1fr}.approvalActions input{grid-column:1/-1}.panel{padding:19px}
+}

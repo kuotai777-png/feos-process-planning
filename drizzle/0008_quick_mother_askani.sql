@@ -1,0 +1,1 @@
+ALTER TABLE `quotes` ADD `reviewed_version_id` text;

@@ -3,6 +3,7 @@ import {getDb} from "@/db";
 import {quotes,quoteVersions} from "@/db/schema";
 import {apiError,guardIntegrationRequest,parseJsonBody} from "@/lib/auth/api-guard";
 import {orderCreateSchema} from "@/lib/integration/erp-schemas";
+import {evaluateQuoteRisk} from "@/lib/quotes/risk";
 
 export const dynamic="force-dynamic";
 export const runtime="edge";
@@ -43,6 +44,8 @@ export async function POST(request:Request){
       id:quotes.id,
       quoteNo:quotes.quoteNo,
       inventoryLockStatus:quotes.inventoryLockStatus,
+      status:quotes.status,
+      reviewedVersionId:quotes.reviewedVersionId,
     }).from(quotes).where(eq(quotes.quoteNo,parsed.data.quote_no)).limit(1);
     if(!quote)return apiError("ERR_4041","Quote not found",404);
 
@@ -52,6 +55,7 @@ export async function POST(request:Request){
       id:quoteVersions.id,
       internalCostJson:quoteVersions.internalCostJson,
       clientFacingJson:quoteVersions.clientFacingJson,
+      calculatedMargin:quoteVersions.calculatedMargin,
     }).from(quoteVersions)
       .where(and(...versionConditions))
       .orderBy(desc(quoteVersions.createdAt))
@@ -63,7 +67,34 @@ export async function POST(request:Request){
     const forbiddenPath=findForbiddenClientPath(version.clientFacingJson);
     if(forbiddenPath)return apiError("ERR_4223","Client-facing quote contains an internal cost field",422,{path:forbiddenPath});
 
-    await db.update(quotes).set({status:"APPROVED_FOR_PRODUCTION"}).where(eq(quotes.id,quote.id));
+    const risk=evaluateQuoteRisk({
+      calculatedMargin:version.calculatedMargin,
+      internalCostJson:version.internalCostJson,
+      bomDetails:parsed.data.bom_details,
+    });
+    const approvedForThisVersion=quote.status==="APPROVED_FOR_PRODUCTION"&&quote.reviewedVersionId===version.id;
+    if(risk.requiresApproval&&!approvedForThisVersion){
+      await db.update(quotes).set({
+        status:"PENDING_APPROVAL",
+        approvalTrigger:risk.reasons.join(" / "),
+        reviewedAt:null,
+        reviewedBy:null,
+        reviewedVersionId:null,
+        reviewComments:null,
+      }).where(eq(quotes.id,quote.id));
+
+      return Response.json({
+        status:"PENDING_APPROVAL",
+        quote_no:quote.quoteNo,
+        quote_version_id:version.id,
+        approval_reasons:risk.reasons,
+      },{status:202,headers:{"cache-control":"no-store"}});
+    }
+
+    await db.update(quotes).set({
+      status:"APPROVED_FOR_PRODUCTION",
+      approvalTrigger:null,
+    }).where(eq(quotes.id,quote.id));
 
     const date=new Date().toISOString().slice(0,10).replaceAll("-","");
     const erpOrderNo="MO-"+date+"-"+crypto.randomUUID().slice(0,8).toUpperCase();

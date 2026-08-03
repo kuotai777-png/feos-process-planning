@@ -125,6 +125,11 @@ export const quotes=sqliteTable("quotes",{
   signedIp:text("signed_ip"),
   signatureHash:text("signature_hash"),
   signatureData:text("signature_data"),
+  approvalTrigger:text("approval_trigger"),
+  reviewedAt:integer("reviewed_at"),
+  reviewedBy:text("reviewed_by"),
+  reviewedVersionId:text("reviewed_version_id"),
+  reviewComments:text("review_comments"),
 });
 
 export const quoteVersions=sqliteTable("quote_versions",{
@@ -137,3 +142,13 @@ export const quoteVersions=sqliteTable("quote_versions",{
   calculatedMargin:real("calculated_margin").notNull().default(0),
   createdAt:integer("created_at").notNull().default(sql`(unixepoch())`),
 });
+export const lossReasons=sqliteTable("loss_reasons",{
+  id:text("id").primaryKey(),
+  quoteId:text("quote_id").notNull().unique().references(()=>quotes.id,{onDelete:"cascade"}),
+  reasonCategory:text("reason_category").notNull(),
+  competitorName:text("competitor_name"),
+  notes:text("notes"),
+  createdAt:integer("created_at").notNull().default(sql`(unixepoch())`),
+},(table)=>[
+  check("loss_reasons_category_check",sql`${table.reasonCategory} in ('PRICE_TOO_HIGH','LEAD_TIME_TOO_LONG','COMPETITOR_WON')`),
+]);
