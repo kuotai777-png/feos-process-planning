@@ -85,6 +85,7 @@ export const materials=sqliteTable("materials",{
   unit:text("unit").notNull(),
   unitCost:real("unit_cost").notNull().default(0),
   defaultWasteRate:real("default_waste_rate").notNull().default(0),
+  moqQuantity:integer("moq_quantity").notNull().default(1),
   alternativeMaterialId:text("alternative_material_id").references(():AnySQLiteColumn=>materials.id,{onDelete:"set null"}),
 });
 
@@ -106,6 +107,7 @@ export const offcutInventory=sqliteTable("offcut_inventory",{
   width:integer("width"),
   thickness:integer("thickness"),
   residualValue:real("residual_value").notNull().default(0),
+  location:text("location").notNull().default("MAIN"),
   status:text("status").notNull().default("available"),
 },(table)=>[
   check("offcut_inventory_status_check",sql`${table.status} in ('available','locked','used')`),
@@ -118,6 +120,7 @@ export const quotes=sqliteTable("quotes",{
   customerName:text("customer_name").notNull(),
   targetBudget:real("target_budget"),
   status:text("status").notNull().default("draft"),
+  inventoryLockStatus:text("inventory_lock_status").notNull().default("none"),
 });
 
 export const quoteVersions=sqliteTable("quote_versions",{

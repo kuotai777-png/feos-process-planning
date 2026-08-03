@@ -1,4 +1,4 @@
-﻿import fontkit from "@pdf-lib/fontkit";
+import fontkit from "@pdf-lib/fontkit";
 import {PDFDocument,rgb} from "pdf-lib";
 import {calculateQuote,MaterialCode,normalizeQuoteInput} from "../../../../src/lib/cpqQuote";
 import fontPart1Url from "../../../../src/assets/fonts/TraditionalChinese.1.png?url";
@@ -60,7 +60,8 @@ export async function POST(request:Request){
 
     pdf.setTitle(quoteNumber+" 家具客製報價單");pdf.setAuthor("FEOS Furniture Studio");pdf.setSubject("Customer quotation");
     const bytes=await pdf.save();
-    return new Response(bytes,{headers:{"content-type":"application/pdf","content-disposition":'attachment; filename="'+quoteNumber+'.pdf"',"cache-control":"no-store","x-content-type-options":"nosniff"}});
+    const responseBody=new Uint8Array(bytes).buffer;
+    return new Response(responseBody,{headers:{"content-type":"application/pdf","content-disposition":'attachment; filename="'+quoteNumber+'.pdf"',"cache-control":"no-store","x-content-type-options":"nosniff"}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"PDF 產生失敗"},{status:400})}
 }
 
