@@ -1,5 +1,6 @@
-import Step06 from "../src/screens/process-planning/Step06";
+﻿import CpqConfigurator from "../src/screens/cpq-configurator/CpqConfigurator";
 
 export default function Home() {
-  return <Step06 />;
+  return <CpqConfigurator />;
 }
+
