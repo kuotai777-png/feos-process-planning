@@ -121,6 +121,10 @@ export const quotes=sqliteTable("quotes",{
   targetBudget:real("target_budget"),
   status:text("status").notNull().default("draft"),
   inventoryLockStatus:text("inventory_lock_status").notNull().default("none"),
+  signedAt:integer("signed_at"),
+  signedIp:text("signed_ip"),
+  signatureHash:text("signature_hash"),
+  signatureData:text("signature_data"),
 });
 
 export const quoteVersions=sqliteTable("quote_versions",{
