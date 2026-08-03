@@ -692,6 +692,10 @@ body:has(.cpq-shell){font-size:16px;line-height:1.6}
 .export-button{padding:12px 14px;font-size:16px}
 .export-message{font-size:14px}
 .summary-footnote{font-size:12px}
+.solana-payment-slot{display:grid;gap:7px;margin-top:10px}
+.solana-button{width:100%;border:1px solid #54776b;border-radius:10px;background:transparent;color:#bdd0c9;font-weight:800}
+.solana-button:disabled{opacity:.65;cursor:not-allowed}
+.solana-payment-slot small{color:#78958a;font-size:12px;line-height:1.5;text-align:center}
 @media(max-width:620px){
   .cpq-hero h1{font-size:26px}
   .cpq-shell h2{font-size:20px}

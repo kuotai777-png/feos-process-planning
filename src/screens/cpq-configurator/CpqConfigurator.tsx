@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import {useMemo,useState} from "react";
 import type {CSSProperties} from "react";
 import {calculateQuote,formatTwd,MATERIALS,MaterialCode} from "../../lib/cpqQuote";
+import {SOLANA_PAYMENT_ENABLED} from "../../lib/solanaPayment";
 
 const materialSwatches:Record<MaterialCode,string>={OAK:"#c99b63",WALNUT:"#65452f",ASH:"#d8bd92",LAMINATE:"#b8afa0"};
 
@@ -79,6 +80,10 @@ export default function CpqConfigurator(){
         <div className="quote-totals"><div><span>商品小計</span><b>{formatTwd(quote.subtotal)}</b></div><div><span>營業稅 5%</span><b>{formatTwd(quote.tax)}</b></div><div className="grand"><span>含稅報價總額</span><b>{formatTwd(quote.total)}</b></div></div>
         <div className="privacy-note"><b>對客資料保護</b><p>匯出的 PDF 僅顯示對客售價，不包含採購單價、損耗率、製造成本或內部毛利。</p></div>
         <button className="export-button" type="button" disabled={exporting||!customerName.trim()} onClick={exportPdf}>{exporting?"正在產生報價單…":"匯出 PDF 報價單"}</button>
+        <div className="solana-payment-slot">
+          <button className="solana-button" type="button" disabled={!SOLANA_PAYMENT_ENABLED}>簽約付定 · Solana</button>
+          <small>Web3 Wallet 介面已預留；啟用前不連接錢包、不簽章，也不送出任何交易。</small>
+        </div>
         {message&&<p className="export-message" role="status">{message}</p>}
         <small className="summary-footnote">價格為系統試算，正式下單前需經業務確認。</small>
       </aside>
