@@ -72,6 +72,7 @@ export default function ApprovalQueue({initialRows}:{initialRows:ApprovalRow[]})
           value={comments[row.id]??""}
           onChange={event=>setComments(current=>({...current,[row.id]:event.target.value}))}
         />
+        <a className={styles.dxfLink} href={`/api/quotes/${encodeURIComponent(row.id)}/export-dxf`} download>下載 DXF</a>
         <button className={styles.returnButton} disabled={busy!==null} onClick={()=>decide(row,"return")}>
           {busy===row.id+"return"?"處理中…":"退回"}
         </button>

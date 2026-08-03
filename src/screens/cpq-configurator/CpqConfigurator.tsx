@@ -1,9 +1,9 @@
 "use client";
 
-import {useMemo,useState} from "react";
-import type {CSSProperties} from "react";
+import {useEffect,useMemo,useState} from "react";
 import {calculateQuote,formatTwd,MATERIALS,MaterialCode} from "../../lib/cpqQuote";
 import {SOLANA_PAYMENT_ENABLED} from "../../lib/solanaPayment";
+import Furniture3DPreview from "../../components/cpq/Furniture3DPreview";
 
 const materialSwatches:Record<MaterialCode,string>={OAK:"#c99b63",WALNUT:"#65452f",ASH:"#d8bd92",LAMINATE:"#b8afa0"};
 
@@ -17,9 +17,35 @@ export default function CpqConfigurator(){
   const [companyName,setCompanyName]=useState("木日空間設計");
   const [notes,setNotes]=useState("桌面四角導圓，霧面透明保護漆。交貨前請提供材色樣板確認。");
   const [exporting,setExporting]=useState(false);
+  const [exportingDxf,setExportingDxf]=useState(false);
+  const [storedQuoteId,setStoredQuoteId]=useState("");
   const [message,setMessage]=useState("");
-  const dimensions={length,width,height};
-  const quote=useMemo(()=>calculateQuote({dimensions,materialCode,quantity}),[length,width,height,materialCode,quantity]);
+  const dimensions=useMemo(()=>({length,width,height}),[length,width,height]);
+  const quote=useMemo(()=>calculateQuote({dimensions,materialCode,quantity}),[dimensions,materialCode,quantity]);
+
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const timer=window.setTimeout(()=>setStoredQuoteId(params.get("quoteId")??params.get("quote_id")??""),0);
+    return ()=>window.clearTimeout(timer);
+  },[]);
+
+  async function exportDxf(){
+    if(!storedQuoteId){setMessage("請先儲存報價，取得報價 ID 後再匯出 DXF。");return}
+    setExportingDxf(true);setMessage("");
+    try{
+      const response=await fetch(`/api/quotes/${encodeURIComponent(storedQuoteId)}/export-dxf`);
+      if(!response.ok){
+        const payload=await response.json().catch(()=>({})) as {message?:string};
+        throw new Error(payload.message??"DXF 產生失敗");
+      }
+      const blob=await response.blob();
+      const disposition=response.headers.get("content-disposition")??"";
+      const filename=disposition.match(/filename="([^"]+)"/)?.[1]??"FEOS-panels.dxf";
+      const url=URL.createObjectURL(blob);const anchor=document.createElement("a");
+      anchor.href=url;anchor.download=filename;anchor.click();URL.revokeObjectURL(url);
+      setMessage("DXF 板件淨尺寸圖已產生，可交由 CAD/CAM 軟體讀取。");
+    }catch(error){setMessage(error instanceof Error?error.message:"DXF 產生失敗")}finally{setExportingDxf(false)}
+  }
 
   async function exportPdf(){
     setExporting(true);setMessage("");
@@ -48,11 +74,13 @@ export default function CpqConfigurator(){
       <div className="cpq-config-column">
         <article className="cpq-card cpq-product-card">
           <div className="cpq-card-head"><div><span>01</span><h2>家具尺寸</h2></div><em>單位：mm</em></div>
-          <div className="furniture-preview" aria-label="客製餐桌尺寸示意圖">
-            <div className="dimension dimension-length">{length} mm</div><div className="dimension dimension-width">{width} mm</div><div className="dimension dimension-height">{height} mm</div>
-            <div className="table-visual" style={{"--wood":materialSwatches[materialCode]} as CSSProperties}><div className="table-top"/><i/><i/><i/><i/></div>
-            <span>{MATERIALS[materialCode].name} · 霧面透明塗裝</span>
-          </div>
+          <Furniture3DPreview
+            length={length}
+            width={width}
+            height={height}
+            materialCode={materialCode}
+            materialName={MATERIALS[materialCode].name}
+          />
           <div className="dimension-grid">
             {([["長度","length",length,setLength,600,3600],["寬度","width",width,setWidth,400,1800],["高度","height",height,setHeight,350,1200]] as const).map(([label,id,value,setter,min,max])=><label key={id}><span>{label}</span><div><input id={id} type="number" min={min} max={max} step="10" value={value} onChange={e=>setter(Number(e.target.value))}/><em>mm</em></div><small>{min} - {max} mm</small></label>)}
           </div>
@@ -80,6 +108,8 @@ export default function CpqConfigurator(){
         <div className="quote-totals"><div><span>商品小計</span><b>{formatTwd(quote.subtotal)}</b></div><div><span>營業稅 5%</span><b>{formatTwd(quote.tax)}</b></div><div className="grand"><span>含稅報價總額</span><b>{formatTwd(quote.total)}</b></div></div>
         <div className="privacy-note"><b>對客資料保護</b><p>匯出的 PDF 僅顯示對客售價，不包含採購單價、損耗率、製造成本或內部毛利。</p></div>
         <button className="export-button" type="button" disabled={exporting||!customerName.trim()} onClick={exportPdf}>{exporting?"正在產生報價單…":"匯出 PDF 報價單"}</button>
+        <button className="dxf-button" type="button" disabled={exportingDxf||!storedQuoteId} onClick={exportDxf}>{exportingDxf?"正在產生 DXF…":"匯出板件 DXF"}</button>
+        {!storedQuoteId&&<small className="dxf-hint">儲存報價後，可由網址中的 quoteId 匯出正式 BOM 板件圖。</small>}
         <div className="solana-payment-slot">
           <button className="solana-button" type="button" disabled={!SOLANA_PAYMENT_ENABLED}>簽約付定 · Solana</button>
           <small>Web3 Wallet 介面已預留；啟用前不連接錢包、不簽章，也不送出任何交易。</small>
